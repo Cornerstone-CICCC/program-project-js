@@ -1,29 +1,33 @@
 import express from "express";
-import mongoose from "mongoose";
-import dotenv from "dotenv";
 import cors from "cors";
+import dotenv from "dotenv";
+import { connectDB } from "./config/db";
 
-dotenv.config(); // .env 파일 로드
+import authRoutes from "./routes/authRoutes";
+import ingredientRoutes from "./routes/ingredientRoutes";
+import sharedPostRoutes from "./routes/sharedPostRoutes";
+import notificationRoutes from "./routes/notificationRoutes";
+import recipeRoutes from "./routes/recipeRoutes";
+
+// 1. Load environment variables
+dotenv.config();
+
+// 2. Connect to Database
+connectDB();
 
 const app = express();
-const PORT = process.env.PORT || 4000;
-const MONGO_URI = process.env.DATABASE_URL;
 
-// Middleware
-app.use(cors()); // 프론트엔드에서의 접근 허용
+// 3. Middlewares
+app.use(cors());
 app.use(express.json());
 
-// MongoDB 연결
-if (!MONGO_URI) {
-  console.error("DATABASE_URL이 .env 파일에 정의되지 않았습니다.");
-  process.exit(1);
-}
+// 4. API Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/ingredients", ingredientRoutes);
+app.use("/api/shared-posts", sharedPostRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/recipes", recipeRoutes);
 
-mongoose
-  .connect(MONGO_URI)
-  .then(() => console.log("✅ MongoDB 연결 성공!"))
-  .catch((err) => console.error("❌ MongoDB 연결 실패:", err));
-
-app.listen(PORT, () => {
-  console.log(`🚀 서버가 http://localhost:${PORT} 에서 실행 중입니다.`);
-});
+// 5. Start Server
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => console.log(`🚀 Server is running on port ${PORT}`));
