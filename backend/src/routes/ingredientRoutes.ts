@@ -5,7 +5,7 @@ import {
   updateIngredient,
   deleteIngredient,
 } from "../controllers/ingredientController";
-import { protect } from "../middlewares/authMiddleware"; // 로그인 체크 미들웨어
+import { protect } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
