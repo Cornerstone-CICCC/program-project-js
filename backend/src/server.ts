@@ -10,19 +10,19 @@ import notificationRoutes from "./routes/notificationRoutes";
 import recipeRoutes from "./routes/recipeRoutes";
 import messageRoutes from "./routes/messageRoutes";
 
-// 1. Load environment variables
+// 1. 환경 변수 설정
 dotenv.config();
 
-// 2. Connect to Database
+// 2. DB 연결
 connectDB();
 
 const app = express();
 
-// 3. Middlewares
+// 3. 미들웨어 설정
 app.use(cors());
 app.use(express.json());
 
-// 4. API Routes
+// 4. API 라우터 연결
 app.use("/api/auth", authRoutes);
 app.use("/api/ingredients", ingredientRoutes);
 app.use("/api/shared-posts", sharedPostRoutes);
@@ -30,6 +30,6 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/recipes", recipeRoutes);
 app.use("/api/messages", messageRoutes);
 
-// 5. Start Server
+// 5. 서버 시작
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`🚀 Server is running on port ${PORT}`));
