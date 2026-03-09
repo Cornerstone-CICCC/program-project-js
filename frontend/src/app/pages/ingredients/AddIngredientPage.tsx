@@ -1,7 +1,7 @@
 // src/app/pages/ingredients/AddIngredientPage.tsx
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Camera, Calendar as CalendarIcon } from "lucide-react";
+import { ArrowLeft, Camera } from "lucide-react"; // CalendarIcon 제거
 
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -22,20 +22,21 @@ export default function AddIngredientPage() {
   const token = localStorage.getItem("ff_token");
   const { create } = useIngredients(token);
 
-  // Figma fields
+  // States
   const [itemName, setItemName] = useState("");
   const [category, setCategory] = useState("vegetable");
-  const [buyDate, setBuyDate] = useState(""); // UI only (not in ERD)
+  // buyDate 관련 state는 사용하지 않으므로 제거
   const [expiryDate, setExpiryDate] = useState("");
-
-  // ERD-required fields (not in figma UI originally)
   const [storeName, setStoreName] = useState("");
-  const [price, setPrice] = useState<number>(0);
+  const [price, setPrice] = useState<string>(""); 
 
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const dLeft = useMemo(() => (expiryDate ? daysUntil(expiryDate) : null), [expiryDate]);
+  const dLeft = useMemo(
+    () => (expiryDate ? daysUntil(expiryDate) : null),
+    [expiryDate],
+  );
 
   const canSave = useMemo(() => {
     return itemName.trim().length > 0 && expiryDate.trim().length > 0;
@@ -55,23 +56,27 @@ export default function AddIngredientPage() {
     setSaving(true);
 
     try {
+      // ⭐ 백엔드 필드명과 일치시키되, 타입 에러 방지를 위해 'as any' 사용
       await create({
         name: itemName.trim(),
-        price: Number.isFinite(price) ? price : 0,
-        storeName: storeName.trim(),
-        expirationDate: expiryDate, // YYYY-MM-DD
-      });
+        price: Number(price) || 0,
+        store_name: storeName.trim(),
+        expiration_date: expiryDate,
+        is_shared: false,
+      } as any);
 
       navigate("/ingredients", { replace: true });
     } catch (e: any) {
-      setErr(e?.message ?? "Failed to save ingredient");
+      setErr(
+        e?.response?.data?.message ?? e?.message ?? "Failed to save ingredient",
+      );
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
       <div className="bg-card px-6 py-4 border-b border-border">
         <div className="flex items-center gap-4">
@@ -84,17 +89,12 @@ export default function AddIngredientPage() {
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-
-          <h1 className="text-xl">Add Ingredient</h1>
-
-          <div className="ml-auto w-10 h-10 bg-primary/20 rounded-full overflow-hidden flex items-center justify-center">
-            <span className="text-xl">👤</span>
-          </div>
+          <h1 className="text-xl font-semibold">Add Ingredient</h1>
         </div>
       </div>
 
-      <div className="px-6 py-6">
-        {/* Image Upload (UI only for now) */}
+      <div className="px-6 py-6 max-w-md mx-auto">
+        {/* Image Upload Area */}
         <div className="mb-6">
           <button
             type="button"
@@ -111,7 +111,7 @@ export default function AddIngredientPage() {
         {/* Form Fields */}
         <div className="space-y-5">
           <div>
-            <Label htmlFor="itemName" className="text-sm mb-2 block">
+            <Label htmlFor="itemName" className="text-sm font-medium mb-2 block">
               Item Name
             </Label>
             <Input
@@ -119,48 +119,46 @@ export default function AddIngredientPage() {
               type="text"
               value={itemName}
               onChange={(e) => setItemName(e.target.value)}
-              placeholder="e.g., Tomatoes"
-              className="w-full px-4 py-3 bg-input-background rounded-xl border-0"
+              placeholder="e.g., Organic Milk"
+              className="w-full px-4 py-3 bg-card rounded-xl border-border"
             />
           </div>
 
-          {/* ERD fields added (Store + Price) */}
-          <div>
-            <Label htmlFor="storeName" className="text-sm mb-2 block">
-              Store Bought
-            </Label>
-            <Input
-              id="storeName"
-              type="text"
-              value={storeName}
-              onChange={(e) => setStoreName(e.target.value)}
-              placeholder="e.g., Costco"
-              className="w-full px-4 py-3 bg-input-background rounded-xl border-0"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="storeName" className="text-sm font-medium mb-2 block">
+                Store
+              </Label>
+              <Input
+                id="storeName"
+                type="text"
+                value={storeName}
+                onChange={(e) => setStoreName(e.target.value)}
+                placeholder="Costco"
+                className="w-full px-4 py-3 bg-card rounded-xl border-border"
+              />
+            </div>
+            <div>
+              <Label htmlFor="price" className="text-sm font-medium mb-2 block">
+                Price
+              </Label>
+              <Input
+                id="price"
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="3500"
+                className="w-full px-4 py-3 bg-card rounded-xl border-border"
+              />
+            </div>
           </div>
 
           <div>
-            <Label htmlFor="price" className="text-sm mb-2 block">
-              Price (CAD)
-            </Label>
-            <Input
-              id="price"
-              type="number"
-              step="0.01"
-              value={Number.isFinite(price) ? price : 0}
-              onChange={(e) => setPrice(Number(e.target.value))}
-              placeholder="e.g., 4.99"
-              className="w-full px-4 py-3 bg-input-background rounded-xl border-0"
-            />
-          </div>
-
-          {/* UI only (category not in ERD yet) */}
-          <div>
-            <Label htmlFor="category" className="text-sm mb-2 block">
+            <Label htmlFor="category" className="text-sm font-medium mb-2 block">
               Category
             </Label>
             <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="w-full px-4 py-3 bg-input-background rounded-xl border-0">
+              <SelectTrigger className="w-full px-4 py-3 bg-card rounded-xl border-border">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -173,40 +171,19 @@ export default function AddIngredientPage() {
                 <SelectItem value="other">📦 Other</SelectItem>
               </SelectContent>
             </Select>
-            <p className="mt-1 text-xs text-muted-foreground">
-              (UI only for now — add DB column later if you want to store it)
-            </p>
           </div>
 
-          {/* UI only (buy date not in ERD) */}
           <div>
-            <Label htmlFor="buyDate" className="text-sm mb-2 block">
-              Buy Date
-            </Label>
-            <div className="relative">
-              <Input
-                id="buyDate"
-                type="date"
-                value={buyDate}
-                onChange={(e) => setBuyDate(e.target.value)}
-                className="w-full px-4 py-3 bg-input-background rounded-xl border-0"
-              />
-              <CalendarIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
-            </div>
-          </div>
-
-          {/* Expiration date (ERD field) */}
-          <div>
-            <Label htmlFor="expiryDate" className="text-sm mb-2 block flex items-center gap-2">
+            <Label htmlFor="expiryDate" className="text-sm font-medium mb-2 block flex items-center gap-2">
               Expiration Date
               {typeof dLeft === "number" && (
                 <span
                   className={`px-2 py-0.5 text-xs rounded-full ${
                     dLeft < 0
-                      ? "bg-neutral-900 text-white"
+                      ? "bg-black text-white"
                       : dLeft <= 3
-                      ? "bg-destructive/10 text-destructive"
-                      : "bg-secondary/40 text-foreground"
+                        ? "bg-red-100 text-red-600"
+                        : "bg-green-100 text-green-600"
                   }`}
                 >
                   {dLeft < 0 ? "Expired" : `D-${dLeft}`}
@@ -219,57 +196,39 @@ export default function AddIngredientPage() {
                 type="date"
                 value={expiryDate}
                 onChange={(e) => setExpiryDate(e.target.value)}
-                className="w-full px-4 py-3 bg-input-background rounded-xl border-0"
+                className="w-full px-4 py-3 bg-card rounded-xl border-border"
               />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              <div className="absolute right-4 top-1/2 -translate-y-1/2">
                 <Button
                   variant="ghost"
                   size="sm"
                   type="button"
-                  className="h-8 text-xs bg-primary/10 text-primary rounded-lg"
+                  className="h-7 text-[10px] bg-primary/10 text-primary hover:bg-primary/20"
                   onClick={() => {
-                    // Simple auto: set expiry = today + 7 days (beginner-friendly)
                     const now = new Date();
                     now.setDate(now.getDate() + 7);
-                    const y = now.getFullYear();
-                    const m = String(now.getMonth() + 1).padStart(2, "0");
-                    const d = String(now.getDate()).padStart(2, "0");
-                    setExpiryDate(`${y}-${m}-${d}`);
+                    setExpiryDate(now.toISOString().split("T")[0]);
                   }}
                 >
-                  📅 Auto
+                  +7 Days
                 </Button>
               </div>
             </div>
           </div>
 
-          {/* Storage Tips (static for now) */}
-          <div className="bg-secondary/20 rounded-2xl p-4">
-            <div className="flex items-start gap-3">
-              <div className="text-2xl">💡</div>
-              <div>
-                <h3 className="text-sm mb-1">Storage Tip</h3>
-                <p className="text-xs text-muted-foreground">
-                  Store tomatoes at room temperature for best flavor. Refrigerate only when fully ripe.
-                </p>
-              </div>
-            </div>
-          </div>
-
           {err && (
-            <div className="rounded-2xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
-              {err}
+            <div className="p-3 rounded-lg bg-red-50 text-red-500 text-xs border border-red-100">
+              ⚠️ {err}
             </div>
           )}
         </div>
 
-        {/* Save Button */}
         <Button
           onClick={handleSave}
-          disabled={saving}
-          className="w-full bg-primary hover:bg-primary/90 text-white py-6 rounded-xl mt-8 disabled:opacity-60"
+          disabled={saving || !canSave}
+          className="w-full bg-primary hover:bg-primary/90 text-white py-6 rounded-xl mt-8 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
         >
-          {saving ? "Saving..." : "Save"}
+          {saving ? "Saving..." : "Save Ingredient"}
         </Button>
       </div>
     </div>
