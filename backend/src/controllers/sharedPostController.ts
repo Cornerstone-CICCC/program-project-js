@@ -20,18 +20,41 @@ export const getSharedPosts = async (req: Request, res: Response) => {
 // @route   POST /api/shared-posts
 export const createSharedPost = async (req: any, res: Response) => {
   try {
+    // 1. 유저 정보가 있는지 확실히 체크 (null 방지)
+    if (!req.user || !req.user.id) {
+      return res
+        .status(401)
+        .json({ message: "User authentication failed. Please login again." });
+    }
+
     const { ingredient_id, pickup_type, photo_url } = req.body;
 
+    // 2. 필수 필드 체크
+    if (!ingredient_id || !pickup_type) {
+      return res
+        .status(400)
+        .json({ message: "ingredient_id and pickup_type are required." });
+    }
+
+    // 3. 데이터 생성
     const newPost = await SharedPost.create({
       ingredient_id,
-      user_id: req.user.id,
+      user_id: req.user.id, // 토큰에서 추출한 ID를 확실히 할당
       pickup_type,
       photo_url,
     });
 
-    res.status(201).json(newPost);
-  } catch (error) {
-    res.status(400).json({ message: "Failed to create shared post." });
+    // 4. 생성된 데이터를 바로 보내주기 전에 유저 정보를 합쳐서(populate) 응답하면 프론트엔드가 편해요.
+    const populatedPost = await SharedPost.findById(newPost._id)
+      .populate("ingredient_id")
+      .populate("user_id", "name");
+
+    res.status(201).json(populatedPost);
+  } catch (error: any) {
+    console.error("🚨 Create Post Error:", error.message);
+    res
+      .status(400)
+      .json({ message: "Failed to create shared post.", error: error.message });
   }
 };
 

@@ -10,6 +10,7 @@ const ingredientSchema = new mongoose.Schema(
     name: { type: String, required: true },
     price: { type: Number },
     store_name: { type: String },
+    purchased_date: { type: Date, required: true }, // 👈 추가: 산 날짜
     expiration_date: { type: Date, required: true },
     is_shared: { type: Boolean, default: false },
   },
