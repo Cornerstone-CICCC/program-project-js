@@ -1,39 +1,19 @@
-// src/app/models/share.ts
-import type { Ingredient } from "./ingredient";
-
-export type PickupType = "door_pickup" | "public_meetup";
-export type SharedPostStatus = "available" | "reserved" | "done" | "cancelled";
-
-export interface SharedPost {
-  id: string;
-
-  ingredientId: string;
-  userId: string;
-
-  pickupType: PickupType;
-  photoUrl?: string | null;
-  status: SharedPostStatus;
-
+export interface SharedItem {
+  id: number;
+  name: string;
+  category: string;
+  image: string;
+  type: 'free' | 'pickup' | 'exchange';
+  location: string;
+  distance: string;
+  user: {
+    name: string;
+    avatar: string;
+    rating: number;
+  };
+  description: string;
+  expiryDate?: string;
   createdAt: string;
-
-  // optional expanded fields (if backend joins them)
-  ingredient?: Ingredient;
-  // If your backend returns user info, uncomment and add type:
-  // user?: { id: string; name: string };
 }
 
-/** Create a shared post (client -> server) */
-export interface CreateSharedPostInput {
-  ingredientId: string;
-  pickupType: PickupType;
-
-  // optional
-  photoUrl?: string | null;
-}
-
-/** Update shared post (client -> server) */
-export interface UpdateSharedPostInput {
-  pickupType?: PickupType;
-  photoUrl?: string | null;
-  status?: SharedPostStatus;
-}
+export type ShareItemType = 'free' | 'pickup' | 'exchange';

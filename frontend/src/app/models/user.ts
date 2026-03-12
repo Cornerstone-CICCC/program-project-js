@@ -1,30 +1,17 @@
-// 📁 /src/app/models/user.ts
-export type UUID = string;
-
-export type User = {
-  id: UUID;
+export interface User {
+  id: string;
   name: string;
   email: string;
-  createdAt: string; // ISO string
-};
+  avatar?: string;
+  createdAt: string;
+}
 
-// Auth payloads (frontend <-> backend)
-export type SignUpInput = {
+export interface AuthCredentials {
+  email: string;
+  password: string;
+}
+
+export interface SignUpData extends AuthCredentials {
   name: string;
-  email: string;
-  password: string;
-};
-
-export type LoginInput = {
-  email: string;
-  password: string;
-};
-
-export type AuthUserResponse = {
-  user: User;
-};
-
-export type AuthTokenResponse = {
-  token: string; // if you use JWT
-  user: User;
-};
+  confirmPassword: string;
+}

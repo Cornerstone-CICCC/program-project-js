@@ -1,123 +1,131 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type {
-  CreateIngredientInput,
-  Ingredient,
-  UpdateIngredientInput,
-} from "../models/ingredient";
-import { ingredientService } from "../services/ingredientService";
+import type { Ingredient } from "../models/ingredient";
 
-export function useIngredients(token: string | null) {
-  const [items, setItems] = useState<Ingredient[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+type CreateIngredientInput = Omit<Ingredient, "id">;
+type UpdateIngredientInput = Partial<Omit<Ingredient, "id">>;
+
+function getStorageKey() {
+  const currentUserEmail = localStorage.getItem("currentUserEmail");
+  return currentUserEmail
+    ? `ingredients_${currentUserEmail}`
+    : "ingredients_guest";
+}
+
+function readIngredients(): Ingredient[] {
+  const key = getStorageKey();
+  const raw = localStorage.getItem(key);
+
+  if (!raw) return [];
+
+  try {
+    return JSON.parse(raw) as Ingredient[];
+  } catch {
+    return [];
+  }
+}
+
+function saveIngredients(items: Ingredient[]) {
+  const key = getStorageKey();
+  localStorage.setItem(key, JSON.stringify(items));
+}
+
+function sortByExpirationDate(data: Ingredient[]) {
+  return [...data].sort((a, b) => {
+    const dateA =
+      (a as Ingredient & { expirationDate?: string; expiration_date?: string })
+        .expirationDate ||
+      (a as Ingredient & { expirationDate?: string; expiration_date?: string })
+        .expiration_date ||
+      "";
+
+    const dateB =
+      (b as Ingredient & { expirationDate?: string; expiration_date?: string })
+        .expirationDate ||
+      (b as Ingredient & { expirationDate?: string; expiration_date?: string })
+        .expiration_date ||
+      "";
+
+    return dateA.localeCompare(dateB);
+  });
+}
+
+export function useIngredients() {
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!token) return;
-    setIsLoading(true);
+    setLoading(true);
     setError(null);
+
     try {
-      const data = await ingredientService.list(token);
-      // 백엔드에서 온 snake_case를 프론트에서 쓰는 expirationDate로 안전하게 정렬
-      const sorted = [...data].sort((a, b) => {
-        const dateA = a.expirationDate || (a as any).expiration_date || "";
-        const dateB = b.expirationDate || (b as any).expiration_date || "";
-        return dateA.localeCompare(dateB);
-      });
-      setItems(sorted);
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to load ingredients");
+      const data = readIngredients();
+      setIngredients(sortByExpirationDate(data));
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : "Failed to load ingredients";
+      setError(message);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
-  const create = useCallback(
-    async (input: CreateIngredientInput) => {
-      if (!token) throw new Error("Not authenticated");
+  const create = useCallback(async (input: CreateIngredientInput) => {
+    const prev = readIngredients();
 
-      // ⭐ 백엔드가 요구하는 Snake Case로 데이터 매핑
-      // 타입 에러를 피하기 위해 백엔드 구조를 명시적으로 생성
-      const backendPayload = {
-        name: input.name,
-        price: input.price,
-        store_name: (input as any).storeName || (input as any).store_name,
-        expiration_date:
-          (input as any).expirationDate || (input as any).expiration_date,
-        is_shared: (input as any).isShared || (input as any).is_shared || false,
-      };
+    const newItem: Ingredient = {
+      id: Date.now(),
+      ...input,
+    };
 
-      // 서비스 호출 시 변환된 데이터를 보냄
-      const created = await ingredientService.create(
-        backendPayload as any,
-        token,
-      );
+    const next = sortByExpirationDate([...prev, newItem]);
+    saveIngredients(next);
+    setIngredients(next);
 
-      setItems((prev) =>
-        [...prev, created].sort((a, b) => {
-          const dateA = a.expirationDate || (a as any).expiration_date || "";
-          const dateB = b.expirationDate || (b as any).expiration_date || "";
-          return dateA.localeCompare(dateB);
-        }),
-      );
-      return created;
-    },
-    [token],
+    return newItem;
+  }, []);
+
+  const update = useCallback(async (id: number, input: UpdateIngredientInput) => {
+    const prev = readIngredients();
+
+    const updatedList = prev.map((item) =>
+      item.id === id ? { ...item, ...input } : item,
+    );
+
+    const updatedItem = updatedList.find((item) => item.id === id);
+
+    if (!updatedItem) {
+      throw new Error(`Ingredient with id ${id} not found`);
+    }
+
+    const sorted = sortByExpirationDate(updatedList);
+    saveIngredients(sorted);
+    setIngredients(sorted);
+
+    return updatedItem;
+  }, []);
+
+  const remove = useCallback(async (id: number) => {
+    const prev = readIngredients();
+    const next = prev.filter((item) => item.id !== id);
+    saveIngredients(next);
+    setIngredients(next);
+  }, []);
+
+  return useMemo(
+    () => ({
+      ingredients,
+      loading,
+      error,
+      refresh,
+      create,
+      update,
+      remove,
+    }),
+    [ingredients, loading, error, refresh, create, update, remove],
   );
-
-  const update = useCallback(
-    async (id: string, input: UpdateIngredientInput) => {
-      if (!token) throw new Error("Not authenticated");
-
-      // 업데이트 시에도 Snake Case 변환이 필요한 경우 처리
-      const backendPayload = {
-        ...input,
-        ...((input as any).storeName && {
-          store_name: (input as any).storeName,
-        }),
-        ...((input as any).expirationDate && {
-          expiration_date: (input as any).expirationDate,
-        }),
-        ...((input as any).isShared !== undefined && {
-          is_shared: (input as any).isShared,
-        }),
-      };
-
-      const updated = await ingredientService.update(
-        id,
-        backendPayload as any,
-        token,
-      );
-      setItems((prev) =>
-        prev
-          .map((x) => (x.id === id ? updated : x))
-          .sort((a, b) => {
-            const dateA = a.expirationDate || (a as any).expiration_date || "";
-            const dateB = b.expirationDate || (b as any).expiration_date || "";
-            return dateA.localeCompare(dateB);
-          }),
-      );
-      return updated;
-    },
-    [token],
-  );
-
-  const remove = useCallback(
-    async (id: string) => {
-      if (!token) throw new Error("Not authenticated");
-      await ingredientService.remove(id, token);
-      setItems((prev) => prev.filter((x) => x.id !== id));
-    },
-    [token],
-  );
-
-  const value = useMemo(
-    () => ({ items, isLoading, error, refresh, create, update, remove }),
-    [items, isLoading, error, refresh, create, update, remove],
-  );
-
-  return value;
 }
