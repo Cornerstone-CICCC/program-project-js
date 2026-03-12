@@ -5,10 +5,30 @@ import { SharedPost } from "../models/SharedPost";
 // @route   GET /api/shared-posts
 export const getSharedPosts = async (req: Request, res: Response) => {
   try {
-    // status가 available인 것만 가져오고, 재료와 유저 정보를 합침(Populate)
-    const posts = await SharedPost.find({ status: "available" })
+    const { search } = req.query; // 1. 쿼리 스트링에서 검색어 추출
+
+    let query: any = { status: "available" };
+
+    // 2. 검색어가 있다면 'populate'될 ingredient의 이름을 찾아야 하므로
+    // 우선 모든 available 포스트를 가져온 뒤 필터링하거나,
+    // 또는 아래처럼 초기 쿼리를 날립니다.
+    const posts = await SharedPost.find(query)
       .populate("ingredient_id")
-      .populate("user_id", "name"); // 유저의 이름만 가져옴
+      .populate("user_id", "name");
+
+    // 3. 검색 필터링 로직 (재료 이름에 검색어가 포함되어 있는지 확인)
+    if (search) {
+      const filteredPosts = posts.filter((post: any) => {
+        // ingredient_id가 있고, 그 이름에 검색어가 포함되어 있는지 체크
+        return (
+          post.ingredient_id &&
+          post.ingredient_id.name
+            .toLowerCase()
+            .includes((search as string).toLowerCase())
+        );
+      });
+      return res.status(200).json(filteredPosts);
+    }
 
     res.status(200).json(posts);
   } catch (error) {
