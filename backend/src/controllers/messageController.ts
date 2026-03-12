@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { Message } from "../models/Message";
-import { SharedPost } from "../models/SharedPost"; // 👈 추가됨 (게시글 주인을 찾기 위해)
+import { SharedPost } from "../models/SharedPost";
+import { Notification } from "../models/Notification";
 
 // @desc    Send a message
 // @route   POST /api/messages
@@ -22,9 +23,17 @@ export const sendMessage = async (req: any, res: Response) => {
       content,
     });
 
+    // 2. 게시글 주인에게 알림 생성 (추가된 로직! 🚀)
+    await Notification.create({
+      user_id: post.user_id,
+      message: `새로운 나눔 메시지: "${content.substring(0, 10)}..."`,
+    });
+
     res.status(201).json(newMessage);
-  } catch (error) {
-    res.status(400).json({ message: "Failed to send message." });
+  } catch (error: any) {
+    res
+      .status(400)
+      .json({ message: "Failed to send message.", error: error.message });
   }
 };
 
