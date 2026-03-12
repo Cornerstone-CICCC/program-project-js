@@ -1,1 +1,14 @@
 @import "tailwindcss";
+
+/* Global theme variables */
+:root {
+  --color-primary: #3b82f6;
+  --color-background: #ffffff;
+}
+
+/* Base styles */
+@layer base {
+  body {
+    background-color: var(--color-background);
+  }
+}

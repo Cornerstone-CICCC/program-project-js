@@ -1,14 +1,31 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
-import "./App.css";
+import { Navigate, Route, Routes } from "react-router-dom";
 
-function App() {
+import { Login } from "./app/pages/login";
+import { SignUp } from "./app/pages/sign-up";
+import { Profile } from "./app/pages/profile";
+import { MainBoard } from "./app/pages/main-board";
+import { AddIngredient } from "./app/pages/add-ingredient";
+import { ShareBoard } from "./app/pages/share-board";
+import { Chat } from "./app/pages/chat";
+import { Notifications } from "./app/pages/notifications";
+import { RecipeGenerator } from "./app/pages/recipe-generator";
+
+export default function App() {
   return (
-    <h1 className="text-3xl font-bold text-blue-600 underline">
-      Tailwind v4 설치 완료!
-    </h1>
+    <Routes>
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<SignUp />} />
+      <Route path="/profile" element={<Profile />} />
+
+      <Route path="/ingredients" element={<MainBoard />} />
+      <Route path="/ingredients/new" element={<AddIngredient />} />
+      <Route path="/share" element={<ShareBoard />} />
+      <Route path="/chat" element={<Chat />} />
+      <Route path="/notifications" element={<Notifications />} />
+      <Route path="/recipes" element={<RecipeGenerator />} />
+
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
   );
 }
-
-export default App;
