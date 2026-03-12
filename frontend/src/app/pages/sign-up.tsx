@@ -3,25 +3,40 @@ import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Leaf } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { useToast } from "../components/ui/use-toast.tsx";
+import { useToast } from "../components/ui/use-toast";
 import logo from "../../assets/logo.png";
 
 export function SignUp() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [isCodeSent, setIsCodeSent] = useState(false);
+
+  const TEMP_VERIFICATION_CODE = "123456";
+
+  const inputFocusClass =
+    "focus-visible:ring-[#1d7d5e] focus-visible:border-[#1d7d5e]";
 
   const emailIsValid = useMemo(() => {
     if (!email) return true;
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }, [email]);
+
+  const usernameIsValid = useMemo(() => {
+    if (!username) return true;
+    return /^[a-zA-Z0-9_]{3,20}$/.test(username);
+  }, [username]);
 
   const passwordChecks = useMemo(() => {
     const hasMinLength = password.length >= 8;
@@ -75,18 +90,16 @@ export function SignUp() {
       colorClass: "bg-green-500",
       textClass: "text-green-500",
     };
-  }, [password, passwordChecks]);
+  }, [passwordChecks, password]);
 
   const passwordsMatch =
     confirmPassword.length === 0 || password === confirmPassword;
 
-  const handleSignUp = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
+  const handleSendVerificationCode = async () => {
+    if (!email.trim()) {
       toast({
-        title: "Missing information",
-        description: "Please fill in all fields.",
+        title: "Email required",
+        description: "Please enter your email first.",
         variant: "destructive",
       });
       return;
@@ -96,6 +109,94 @@ export function SignUp() {
       toast({
         title: "Invalid email",
         description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsSendingCode(true);
+
+      // 백엔드 연결 전 임시 동작
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      setIsCodeSent(true);
+
+      toast({
+        title: "Verification code sent",
+        description: `Temporary test code: ${TEMP_VERIFICATION_CODE}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to send code",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingCode(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (
+      !firstName.trim() ||
+      !lastName.trim() ||
+      !username.trim() ||
+      !email.trim() ||
+      !password.trim() ||
+      !confirmPassword.trim()
+    ) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!usernameIsValid) {
+      toast({
+        title: "Invalid username",
+        description:
+          "Username must be 3-20 characters and can only include letters, numbers, and underscores.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!emailIsValid) {
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isCodeSent) {
+      toast({
+        title: "Verification required",
+        description: "Please send the verification code first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!verificationCode.trim()) {
+      toast({
+        title: "Missing verification code",
+        description: "Please enter the verification code.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (verificationCode !== TEMP_VERIFICATION_CODE) {
+      toast({
+        title: "Invalid verification code",
+        description: "Please enter the correct test verification code.",
         variant: "destructive",
       });
       return;
@@ -146,7 +247,7 @@ export function SignUp() {
       return;
     }
 
-    if (password !== confirmPassword) {
+    if (!passwordsMatch) {
       toast({
         title: "Password mismatch",
         description: "Passwords do not match.",
@@ -155,12 +256,35 @@ export function SignUp() {
       return;
     }
 
-    toast({
-      title: "Account created 🎉",
-      description: "Your account was created successfully. Please log in.",
-    });
+    try {
+      // 백엔드 연결 전 임시 동작
+      // 나중에 실제 API 연결 시 아래 형태로 교체
+      // await fetch("/api/auth/signup", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({
+      //     firstName,
+      //     lastName,
+      //     username,
+      //     email,
+      //     password,
+      //     verificationCode,
+      //   }),
+      // });
 
-    navigate("/login");
+      toast({
+        title: "Account created 🎉",
+        description: "Your account was created successfully. Please log in.",
+      });
+
+      navigate("/login");
+    } catch (error) {
+      toast({
+        title: "Sign up failed",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -171,7 +295,7 @@ export function SignUp() {
             <img
               src={logo}
               alt="FridgeFriend Logo"
-              className="w-28 h-28 drop-shadow-sm"
+              className="w-28 h-28"
             />
           </div>
 
@@ -189,37 +313,109 @@ export function SignUp() {
           <h2 className="mb-6 text-center text-xl">Create Account</h2>
 
           <form onSubmit={handleSignUp} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="first-name" className="block mb-2 text-sm">
+                  First Name
+                </label>
+                <Input
+                  id="first-name"
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Enter first name"
+                  className={`w-full px-4 py-3 rounded-xl ${inputFocusClass}`}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="last-name" className="block mb-2 text-sm">
+                  Last Name
+                </label>
+                <Input
+                  id="last-name"
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Enter last name"
+                  className={`w-full px-4 py-3 rounded-xl ${inputFocusClass}`}
+                />
+              </div>
+            </div>
+
             <div>
-              <label htmlFor="signup-name" className="block mb-2 text-sm">
-                Name
+              <label htmlFor="username" className="block mb-2 text-sm">
+                Username
               </label>
               <Input
-                id="signup-name"
+                id="username"
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter your name"
-                className="w-full px-4 py-3 rounded-xl"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter username"
+                className={`w-full px-4 py-3 rounded-xl ${inputFocusClass} ${
+                  username && !usernameIsValid
+                    ? "border-red-500 focus-visible:ring-red-500 focus-visible:border-red-500"
+                    : ""
+                }`}
               />
+              {username && !usernameIsValid && (
+                <p className="text-xs text-red-500 mt-2">
+                  Use 3-20 letters, numbers, or underscores only.
+                </p>
+              )}
             </div>
 
             <div>
               <label htmlFor="signup-email" className="block mb-2 text-sm">
                 Email
               </label>
-              <Input
-                id="signup-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                className={`w-full px-4 py-3 rounded-xl ${
-                  email && !emailIsValid ? "border-red-500 focus-visible:ring-red-500" : ""
-                }`}
-              />
+
+              <div className="flex gap-2">
+                <Input
+                  id="signup-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className={`w-full px-4 py-3 rounded-xl ${inputFocusClass} ${
+                    email && !emailIsValid
+                      ? "border-red-500 focus-visible:ring-red-500 focus-visible:border-red-500"
+                      : ""
+                  }`}
+                />
+                <Button
+                  type="button"
+                  onClick={handleSendVerificationCode}
+                  disabled={isSendingCode}
+                  className="rounded-xl whitespace-nowrap bg-[#1d7d5e] hover:bg-[#17664c] text-white"
+                >
+                  {isSendingCode ? "Sending..." : "Send Code"}
+                </Button>
+              </div>
+
               {email && !emailIsValid && (
                 <p className="text-xs text-red-500 mt-2">
                   Please enter a valid email address.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="verification-code" className="block mb-2 text-sm">
+                Verification Code
+              </label>
+              <Input
+                id="verification-code"
+                type="text"
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value)}
+                placeholder="Enter verification code"
+                className={`w-full px-4 py-3 rounded-xl ${inputFocusClass}`}
+              />
+              {isCodeSent && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Test verification code: {TEMP_VERIFICATION_CODE}
                 </p>
               )}
             </div>
@@ -236,7 +432,7 @@ export function SignUp() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Create a password"
-                  className="w-full px-4 py-3 pr-12 rounded-xl"
+                  className={`w-full px-4 py-3 pr-12 rounded-xl ${inputFocusClass}`}
                 />
                 <button
                   type="button"
@@ -285,7 +481,10 @@ export function SignUp() {
             </div>
 
             <div>
-              <label htmlFor="signup-confirm-password" className="block mb-2 text-sm">
+              <label
+                htmlFor="signup-confirm-password"
+                className="block mb-2 text-sm"
+              >
                 Confirm Password
               </label>
 
@@ -296,9 +495,9 @@ export function SignUp() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Re-enter your password"
-                  className={`w-full px-4 py-3 pr-12 rounded-xl ${
+                  className={`w-full px-4 py-3 pr-12 rounded-xl ${inputFocusClass} ${
                     confirmPassword && !passwordsMatch
-                      ? "border-red-500 focus-visible:ring-red-500"
+                      ? "border-red-500 focus-visible:ring-red-500 focus-visible:border-red-500"
                       : ""
                   }`}
                 />
@@ -324,16 +523,16 @@ export function SignUp() {
 
             <Button
               type="submit"
-              className="w-full bg-primary hover:bg-primary/90 text-white py-6 rounded-xl mt-6"
+              className="w-full bg-[#1d7d5e] hover:bg-[#17664c] text-white py-6 rounded-xl mt-6"
             >
-              Sign Up
+              Create Account
             </Button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
               Already have an account?{" "}
-              <Link to="/login" className="text-primary">
+              <Link to="/login" className="text-[#1d7d5e] hover:underline">
                 Log In
               </Link>
             </p>
@@ -342,22 +541,22 @@ export function SignUp() {
 
         <div className="mt-8 space-y-3">
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
-              <Leaf className="w-4 h-4 text-primary" />
+            <div className="w-8 h-8 bg-[#1d7d5e]/20 rounded-full flex items-center justify-center">
+              <Leaf className="w-4 h-4 text-[#1d7d5e]" />
             </div>
             <span>Track your ingredients & reduce food waste</span>
           </div>
 
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
-              <span className="text-primary">👥</span>
+            <div className="w-8 h-8 bg-[#1d7d5e]/20 rounded-full flex items-center justify-center">
+              <span className="text-[#1d7d5e]">👥</span>
             </div>
             <span>Share food with friends & neighbors</span>
           </div>
 
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
-              <span className="text-primary">🍳</span>
+            <div className="w-8 h-8 bg-[#1d7d5e]/20 rounded-full flex items-center justify-center">
+              <span className="text-[#1d7d5e]">🍳</span>
             </div>
             <span>Get AI-powered recipe suggestions</span>
           </div>

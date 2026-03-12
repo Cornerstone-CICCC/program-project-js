@@ -57,7 +57,7 @@ export function Notifications() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-28">
       {/* Header */}
       <div className="bg-card px-6 py-4 border-b border-border">
         <div className="flex items-center gap-4 mb-4">
