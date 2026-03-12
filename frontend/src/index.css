@@ -1,7 +1,14 @@
 @import "tailwindcss";
 
-@theme {
-  /* 만약 'primary'라는 이름을 쓰고 싶다면 여기서 정의해야 합니다 */
-  --color-primary: #3b82f6; 
+/* Global theme variables */
+:root {
+  --color-primary: #3b82f6;
   --color-background: #ffffff;
+}
+
+/* Base styles */
+@layer base {
+  body {
+    background-color: var(--color-background);
+  }
 }

@@ -1,4 +1,4 @@
-import type { Recipe, RecipeGeneratorRequest } from '../models';
+import type { Recipe, RecipeGeneratorRequest } from "../models";
 
 // Mock recipes
 const mockRecipes: Recipe[] = [
@@ -15,7 +15,7 @@ const mockRecipes: Recipe[] = [
       "Chop the spinach finely",
       "Heat butter in a pan",
       "Pour eggs and add spinach",
-      "Cook until set and fold"
+      "Cook until set and fold",
     ],
     matchPercentage: 85,
   },
@@ -26,13 +26,19 @@ const mockRecipes: Recipe[] = [
     image: "🥗",
     cookTime: "20 mins",
     difficulty: "Easy",
-    ingredients: ["Chicken Breast", "Spinach", "Tomatoes", "Olive Oil", "Lemon"],
+    ingredients: [
+      "Chicken Breast",
+      "Spinach",
+      "Tomatoes",
+      "Olive Oil",
+      "Lemon",
+    ],
     instructions: [
       "Grill the chicken breast",
       "Chop vegetables",
       "Mix all ingredients",
       "Add dressing",
-      "Serve fresh"
+      "Serve fresh",
     ],
     matchPercentage: 92,
   },
@@ -49,7 +55,7 @@ const mockRecipes: Recipe[] = [
       "Dice tomatoes",
       "Heat oil in pan",
       "Cook tomatoes first",
-      "Add eggs and scramble"
+      "Add eggs and scramble",
     ],
     matchPercentage: 78,
   },
@@ -66,7 +72,7 @@ const mockRecipes: Recipe[] = [
       "Cook chicken until golden",
       "Sauté garlic and spinach",
       "Add cream and chicken",
-      "Toss with pasta and serve"
+      "Toss with pasta and serve",
     ],
     matchPercentage: 65,
   },
@@ -90,13 +96,14 @@ export const recipeService = {
     });
   },
 
-  // Generate recipes based on ingredients
-  generateRecipes: async (request: RecipeGeneratorRequest): Promise<Recipe[]> => {
+  // Generate recipes (mock)
+  generateRecipes: async (
+    _request: RecipeGeneratorRequest,
+  ): Promise<Recipe[]> => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        // Mock: return recipes sorted by match percentage
-        const sortedRecipes = [...mockRecipes].sort((a, b) => 
-          (b.matchPercentage || 0) - (a.matchPercentage || 0)
+        const sortedRecipes = [...mockRecipes].sort(
+          (a, b) => (b.matchPercentage ?? 0) - (a.matchPercentage ?? 0),
         );
         resolve(sortedRecipes);
       }, 800);
@@ -107,10 +114,13 @@ export const recipeService = {
   search: async (query: string): Promise<Recipe[]> => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        const results = mockRecipes.filter((recipe) =>
-          recipe.name.toLowerCase().includes(query.toLowerCase()) ||
-          recipe.description.toLowerCase().includes(query.toLowerCase()) ||
-          recipe.ingredients.some(ing => ing.toLowerCase().includes(query.toLowerCase()))
+        const results = mockRecipes.filter(
+          (recipe) =>
+            recipe.name.toLowerCase().includes(query.toLowerCase()) ||
+            recipe.description.toLowerCase().includes(query.toLowerCase()) ||
+            recipe.ingredients.some((ing) =>
+              ing.toLowerCase().includes(query.toLowerCase()),
+            ),
         );
         resolve(results);
       }, 300);
@@ -118,10 +128,14 @@ export const recipeService = {
   },
 
   // Filter by difficulty
-  filterByDifficulty: async (difficulty: 'Easy' | 'Medium' | 'Hard'): Promise<Recipe[]> => {
+  filterByDifficulty: async (
+    difficulty: "Easy" | "Medium" | "Hard",
+  ): Promise<Recipe[]> => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        const filtered = mockRecipes.filter((recipe) => recipe.difficulty === difficulty);
+        const filtered = mockRecipes.filter(
+          (recipe) => recipe.difficulty === difficulty,
+        );
         resolve(filtered);
       }, 300);
     });
