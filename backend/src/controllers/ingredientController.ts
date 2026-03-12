@@ -2,12 +2,54 @@ import { Request, Response } from "express";
 import { Ingredient } from "../models/Ingredient";
 import { SharedPost } from "../models/SharedPost";
 
+const autoCategorize = (name: string): string => {
+  const map: { [key: string]: string[] } = {
+    Meat: [
+      "소",
+      "돼지",
+      "닭",
+      "고기",
+      "beef",
+      "pork",
+      "chicken",
+      "삼겹살",
+      "스테이크",
+    ],
+    Seafood: [
+      "연어",
+      "새우",
+      "생선",
+      "고등어",
+      "오징어",
+      "salmon",
+      "shrimp",
+      "fish",
+    ],
+    Vegetable: [
+      "양파",
+      "당근",
+      "마늘",
+      "배추",
+      "감자",
+      "onion",
+      "garlic",
+      "carrot",
+    ],
+    Dairy: ["우유", "치즈", "버터", "요거트", "milk", "cheese", "butter"],
+    Fruit: ["사과", "바나나", "포도", "딸기", "apple", "banana", "berry"],
+  };
+
+  for (const [cat, keywords] of Object.entries(map)) {
+    if (keywords.some((k) => name.toLowerCase().includes(k))) return cat;
+  }
+  return "General"; // 매칭되지 않을 경우 기본값
+};
+
 // @desc    Get my ingredient list
 export const getIngredients = async (req: any, res: Response) => {
   try {
-    // 최신순으로 정렬해서 보여주는 것이 사용자 입장에서 편합니다.
     const ingredients = await Ingredient.find({ user_id: req.user.id }).sort({
-      created_at: -1,
+      expiration_date: 1, // 유통기한이 임박한 순서대로 정렬하는 것이 더 전략적입니다.
     });
     res.status(200).json(ingredients);
   } catch (error) {
@@ -15,30 +57,56 @@ export const getIngredients = async (req: any, res: Response) => {
   }
 };
 
-// @desc    Add a new ingredient
+/**
+ * [추가] 유통기한 임박 알림 조회 (오늘 기준 3일 이내)
+ * @route GET /api/ingredients/alerts
+ */
+export const getExpiryAlerts = async (req: any, res: Response) => {
+  try {
+    const today = new Date();
+    const threeDaysLater = new Date();
+    threeDaysLater.setDate(today.getDate() + 3);
+
+    const alerts = await Ingredient.find({
+      user_id: req.user.id,
+      expiration_date: {
+        $gte: today, // 오늘부터
+        $lte: threeDaysLater, // 3일 후까지
+      },
+    }).sort({ expiration_date: 1 });
+
+    res.json(alerts);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch expiry alerts." });
+  }
+};
+
+// @desc    Add a new ingredient (with Auto-Categorization)
 export const createIngredient = async (req: any, res: Response) => {
   try {
     const { name, price, store_name, purchased_date, expiration_date } =
       req.body;
 
-    // 필수 필드 검증 (purchased_date 누락 방지)
     if (!name || !purchased_date || !expiration_date) {
       return res.status(400).json({
         message: "Name, purchased date, and expiration date are required.",
       });
     }
 
+    // [핵심] 저장 시 자동으로 카테고리 할당
+    const category = autoCategorize(name);
+
     const newIngredient = await Ingredient.create({
       user_id: req.user.id,
       name,
-      price: price || 0, // 가격이 없을 경우 0으로 세팅
+      category, // 고도화 필드
+      price: price || 0,
       store_name,
-      purchased_date, // ERD에 추가한 필드
+      purchased_date,
       expiration_date,
     });
     res.status(201).json(newIngredient);
   } catch (error: any) {
-    // 에러 발생 시 로그를 찍어주면 디버깅이 훨씬 쉽습니다.
     console.error("Create Error:", error.message);
     res
       .status(400)
