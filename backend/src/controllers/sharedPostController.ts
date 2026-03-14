@@ -1,25 +1,19 @@
 import { Request, Response } from "express";
 import { SharedPost } from "../models/SharedPost";
+import { Comment } from "../models/Comment"; // 👈 중괄호 확인!
 
-// @desc    Get all available shared posts
-// @route   GET /api/shared-posts
+// @desc    Get all available shared posts (with search)
 export const getSharedPosts = async (req: Request, res: Response) => {
   try {
-    const { search } = req.query; // 1. 쿼리 스트링에서 검색어 추출
-
+    const { search } = req.query;
     let query: any = { status: "available" };
 
-    // 2. 검색어가 있다면 'populate'될 ingredient의 이름을 찾아야 하므로
-    // 우선 모든 available 포스트를 가져온 뒤 필터링하거나,
-    // 또는 아래처럼 초기 쿼리를 날립니다.
     const posts = await SharedPost.find(query)
       .populate("ingredient_id")
       .populate("user_id", "name");
 
-    // 3. 검색 필터링 로직 (재료 이름에 검색어가 포함되어 있는지 확인)
     if (search) {
       const filteredPosts = posts.filter((post: any) => {
-        // ingredient_id가 있고, 그 이름에 검색어가 포함되어 있는지 체크
         return (
           post.ingredient_id &&
           post.ingredient_id.name
@@ -37,49 +31,40 @@ export const getSharedPosts = async (req: Request, res: Response) => {
 };
 
 // @desc    Create a shared post
-// @route   POST /api/shared-posts
 export const createSharedPost = async (req: any, res: Response) => {
   try {
-    // 1. 유저 정보가 있는지 확실히 체크 (null 방지)
     if (!req.user || !req.user.id) {
-      return res
-        .status(401)
-        .json({ message: "User authentication failed. Please login again." });
+      return res.status(401).json({ message: "User authentication failed." });
     }
 
     const { ingredient_id, pickup_type, photo_url } = req.body;
 
-    // 2. 필수 필드 체크
     if (!ingredient_id || !pickup_type) {
       return res
         .status(400)
         .json({ message: "ingredient_id and pickup_type are required." });
     }
 
-    // 3. 데이터 생성
     const newPost = await SharedPost.create({
       ingredient_id,
-      user_id: req.user.id, // 토큰에서 추출한 ID를 확실히 할당
+      user_id: req.user.id,
       pickup_type,
       photo_url,
     });
 
-    // 4. 생성된 데이터를 바로 보내주기 전에 유저 정보를 합쳐서(populate) 응답하면 프론트엔드가 편해요.
     const populatedPost = await SharedPost.findById(newPost._id)
       .populate("ingredient_id")
       .populate("user_id", "name");
 
     res.status(201).json(populatedPost);
   } catch (error: any) {
-    console.error("🚨 Create Post Error:", error.message);
     res
       .status(400)
       .json({ message: "Failed to create shared post.", error: error.message });
   }
 };
 
-// @desc    Get single shared post detail
-// @route   GET /api/shared-posts/:id
+// @desc    Get single shared post detail with comments
 export const getSharedPostById = async (req: Request, res: Response) => {
   try {
     const post = await SharedPost.findById(req.params.id)
@@ -89,23 +74,87 @@ export const getSharedPostById = async (req: Request, res: Response) => {
     if (!post) {
       return res.status(404).json({ message: "Post not found." });
     }
-    res.status(200).json(post);
+
+    // 💡 에러 해결 포인트: Comment as any를 사용하거나 import 확인
+    const comments = await (Comment as any)
+      .find({ post_id: req.params.id })
+      .populate("user_id", "name")
+      .sort({ created_at: -1 });
+
+    res.status(200).json({ post, comments });
   } catch (error) {
     res.status(400).json({ message: "Invalid post ID." });
   }
 };
 
-// @desc    Update post status (e.g., mark as completed)
-// @route   PATCH /api/shared-posts/:id
-export const updatePostStatus = async (req: Request, res: Response) => {
+// @desc    Add a comment to a post (누락되었던 기능 추가)
+export const addComment = async (req: any, res: Response) => {
   try {
-    const updatedPost = await SharedPost.findByIdAndUpdate(
+    const { content } = req.body;
+    const newComment = await Comment.create({
+      post_id: req.params.id,
+      user_id: req.user.id,
+      content,
+    });
+    const populatedComment = await Comment.findById(newComment._id).populate(
+      "user_id",
+      "name",
+    );
+    res.status(201).json(populatedComment);
+  } catch (error: any) {
+    res.status(400).json({ message: "Failed to add comment." });
+  }
+};
+
+// @desc    Update post status
+export const updatePostStatus = async (req: any, res: Response) => {
+  try {
+    const post = await SharedPost.findById(req.params.id);
+    if (!post) return res.status(404).json({ message: "Post not found." });
+
+    if (post.user_id.toString() !== req.user.id) {
+      return res.status(401).json({ message: "User not authorized." });
+    }
+
+    post.status = req.body.status || post.status;
+    await post.save();
+    res.status(200).json(post);
+  } catch (error) {
+    res.status(400).json({ message: "Update status failed." });
+  }
+};
+
+// @desc    Update a shared post (Full update)
+export const updateSharedPost = async (req: any, res: Response) => {
+  try {
+    const { pickup_type, photo_url, status } = req.body;
+    let post = await SharedPost.findById(req.params.id);
+
+    if (!post || post.user_id.toString() !== req.user.id) {
+      return res.status(401).json({ message: "Not authorized." });
+    }
+
+    post = await SharedPost.findByIdAndUpdate(
       req.params.id,
-      { status: req.body.status },
+      { pickup_type, photo_url, status },
       { new: true },
     );
-    res.status(200).json(updatedPost);
-  } catch (error) {
-    res.status(400).json({ message: "Failed to update post status." });
+    res.status(200).json(post);
+  } catch (error: any) {
+    res.status(400).json({ message: "Update failed." });
+  }
+};
+
+// @desc    Delete a shared post
+export const deleteSharedPost = async (req: any, res: Response) => {
+  try {
+    const post = await SharedPost.findById(req.params.id);
+    if (!post || post.user_id.toString() !== req.user.id) {
+      return res.status(401).json({ message: "Not authorized." });
+    }
+    await post.deleteOne();
+    res.status(200).json({ message: "Post removed." });
+  } catch (error: any) {
+    res.status(500).json({ message: "Delete failed." });
   }
 };
