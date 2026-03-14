@@ -1,3 +1,4 @@
+//App.tsx
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { Login } from "./app/pages/login";
@@ -5,6 +6,7 @@ import { SignUp } from "./app/pages/sign-up";
 import { Profile } from "./app/pages/profile";
 import { MainBoard } from "./app/pages/main-board";
 import { AddIngredient } from "./app/pages/add-ingredient";
+import { EditIngredient } from "./app/pages/edit-ingredient";
 import { ShareBoard } from "./app/pages/share-board";
 import { Chat } from "./app/pages/chat";
 import { Notifications } from "./app/pages/notifications";
@@ -20,6 +22,8 @@ export default function App() {
 
       <Route path="/ingredients" element={<MainBoard />} />
       <Route path="/ingredients/new" element={<AddIngredient />} />
+      <Route path="/ingredients/:id/edit" element={<EditIngredient />} />
+
       <Route path="/share" element={<ShareBoard />} />
       <Route path="/chat" element={<Chat />} />
       <Route path="/notifications" element={<Notifications />} />

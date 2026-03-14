@@ -35,15 +35,20 @@ type SignUpResponse = {
   };
 };
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "http://localhost:4000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "";
 
 async function parseResponse<T>(response: Response): Promise<T> {
-  const data = (await response.json().catch(() => null)) as T | { message?: string } | null;
+  const data = (await response.json().catch(() => null)) as
+    | T
+    | { message?: string }
+    | null;
 
   if (!response.ok) {
     const message =
-      data && typeof data === "object" && "message" in data && typeof data.message === "string"
+      data &&
+      typeof data === "object" &&
+      "message" in data &&
+      typeof data.message === "string"
         ? data.message
         : "Request failed.";
     throw new Error(message);
@@ -54,32 +59,46 @@ async function parseResponse<T>(response: Response): Promise<T> {
 
 export const authService = {
   login: async (credentials: AuthCredentials): Promise<LoginResponse> => {
-    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(credentials),
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(credentials),
+      });
 
-    return parseResponse<LoginResponse>(response);
+      return parseResponse<LoginResponse>(response);
+    } catch (error) {
+      if (error instanceof TypeError) {
+        throw new Error("Cannot connect to the server. Please make sure the backend is running.");
+      }
+      throw error;
+    }
   },
 
   signUp: async (data: SignUpPayload): Promise<SignUpResponse> => {
-    const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        password: data.password,
-      }),
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          password: data.password,
+        }),
+      });
 
-    return parseResponse<SignUpResponse>(response);
+      return parseResponse<SignUpResponse>(response);
+    } catch (error) {
+      if (error instanceof TypeError) {
+        throw new Error("Cannot connect to the server. Please make sure the backend is running.");
+      }
+      throw error;
+    }
   },
 
   logout: async (): Promise<void> => {
@@ -93,12 +112,19 @@ export const authService = {
 
     if (!token) return null;
 
-    const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-    return parseResponse(response);
+      return parseResponse(response);
+    } catch (error) {
+      if (error instanceof TypeError) {
+        throw new Error("Cannot connect to the server. Please make sure the backend is running.");
+      }
+      throw error;
+    }
   },
 };

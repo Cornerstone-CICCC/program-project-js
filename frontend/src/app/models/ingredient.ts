@@ -1,6 +1,6 @@
 //models/ingredient.ts
 export interface Ingredient {
-  id: number;
+  id: string;
   name: string;
   category: string;
   expiry: string;
