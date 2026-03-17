@@ -1,3 +1,4 @@
+//sign-up.tsx
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Leaf } from "lucide-react";
@@ -5,6 +6,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { useToast } from "../components/ui/use-toast";
 import logo from "../../assets/logo.png";
+import { authService } from "../services/authService";
 
 export function SignUp() {
   const navigate = useNavigate();
@@ -22,6 +24,7 @@ export function SignUp() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [isCodeSent, setIsCodeSent] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const TEMP_VERIFICATION_CODE = "123456";
 
@@ -116,17 +119,14 @@ export function SignUp() {
 
     try {
       setIsSendingCode(true);
-
-      // 백엔드 연결 전 임시 동작
       await new Promise((resolve) => setTimeout(resolve, 500));
-
       setIsCodeSent(true);
 
       toast({
         title: "Verification code sent",
         description: `Temporary test code: ${TEMP_VERIFICATION_CODE}`,
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Failed to send code",
         description: "Please try again.",
@@ -257,20 +257,15 @@ export function SignUp() {
     }
 
     try {
-      // 백엔드 연결 전 임시 동작
-      // 나중에 실제 API 연결 시 아래 형태로 교체
-      // await fetch("/api/auth/signup", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({
-      //     firstName,
-      //     lastName,
-      //     username,
-      //     email,
-      //     password,
-      //     verificationCode,
-      //   }),
-      // });
+      setIsSubmitting(true);
+
+      await authService.signUp({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        password,
+        confirmPassword,
+      });
 
       toast({
         title: "Account created 🎉",
@@ -279,11 +274,16 @@ export function SignUp() {
 
       navigate("/login");
     } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Please try again later.";
+
       toast({
         title: "Sign up failed",
-        description: "Please try again later.",
+        description: message,
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -301,7 +301,7 @@ export function SignUp() {
 
           <h1 className="text-4xl mb-2 flex items-center justify-center gap-2">
             <span className="text-foreground">Fridge</span>
-            <span className="text-primary">Friend</span>
+            <span className="text-[#1d7d5e]">Friend</span>
           </h1>
 
           <p className="text-sm text-muted-foreground">
@@ -523,9 +523,10 @@ export function SignUp() {
 
             <Button
               type="submit"
-              className="w-full bg-[#1d7d5e] hover:bg-[#17664c] text-white py-6 rounded-xl mt-6"
+              disabled={isSubmitting}
+              className="w-full bg-[#1d7d5e] hover:bg-[#17664c] text-white py-6 rounded-xl mt-6 disabled:opacity-60"
             >
-              Create Account
+              {isSubmitting ? "Creating Account..." : "Create Account"}
             </Button>
           </form>
 

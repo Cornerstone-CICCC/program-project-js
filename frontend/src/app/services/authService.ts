@@ -1,81 +1,97 @@
-import type { AuthCredentials, SignUpData, User } from "../models";
+import type { AuthResponse, LoginInput, SignUpInput, User } from "../models/user";
 
-type AppUser = User & {
-  avatar?: string;
-  createdAt?: string;
-};
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "";
 
-type SignUpPayload = SignUpData & {
-  confirmPassword?: string;
-};
+const TOKEN_KEY = "token";
 
-const mockUser: AppUser = {
-  id: "1",
-  name: "Seulgi",
-  email: "seulgi@example.com",
-  avatar: "👤",
-  createdAt: new Date().toISOString(),
-};
+async function parseJson<T>(response: Response): Promise<T | null> {
+  return (await response.json().catch(() => null)) as T | null;
+}
+
+function getErrorMessage(data: unknown, fallback: string) {
+  if (
+    data &&
+    typeof data === "object" &&
+    "message" in data &&
+    typeof (data as { message?: unknown }).message === "string"
+  ) {
+    return (data as { message: string }).message;
+  }
+
+  return fallback;
+}
 
 export const authService = {
-  login: async (credentials: AuthCredentials): Promise<User> => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (credentials.email && credentials.password) {
-          resolve(mockUser);
-        } else {
-          reject(new Error("Invalid credentials"));
-        }
-      }, 500);
+  async login(input: LoginInput): Promise<AuthResponse> {
+    const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
     });
+
+    const data = await parseJson<AuthResponse | { message?: string }>(res);
+
+    if (!res.ok || !data || Array.isArray(data) || !("token" in data)) {
+      throw new Error(getErrorMessage(data, "Login failed"));
+    }
+
+    return data;
   },
 
-  signUp: async (data: SignUpPayload): Promise<User> => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (
-          typeof data.confirmPassword === "string" &&
-          data.password !== data.confirmPassword
-        ) {
-          reject(new Error("Passwords do not match"));
-        } else if (!data.email || !data.password || !data.name) {
-          reject(new Error("All fields are required"));
-        } else {
-          const newUser: AppUser = {
-            id: Math.random().toString(36).slice(2, 11),
-            name: data.name,
-            email: data.email,
-            createdAt: new Date().toISOString(),
-          };
-
-          resolve(newUser);
-        }
-      }, 500);
+  async signUp(input: SignUpInput): Promise<{ message?: string; user: User }> {
+    const res = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
     });
+
+    const data = await parseJson<
+      { message?: string; user: User } | { message?: string }
+    >(res);
+
+    if (!res.ok || !data || Array.isArray(data) || !("user" in data)) {
+      throw new Error(getErrorMessage(data, "Signup failed"));
+    }
+
+    return data;
   },
 
-  logout: async (): Promise<void> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, 300);
+  async me(token?: string): Promise<{ user: User }> {
+    const accessToken = token || localStorage.getItem(TOKEN_KEY);
+
+    if (!accessToken) {
+      throw new Error("Not authenticated");
+    }
+
+    const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
     });
+
+    const data = await parseJson<User | { message?: string }>(res);
+
+    if (!res.ok || !data || Array.isArray(data) || !("email" in data)) {
+      throw new Error(getErrorMessage(data, "Not authenticated"));
+    }
+
+    return { user: data };
   },
 
-  getCurrentUser: async (): Promise<User | null> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(mockUser);
-      }, 300);
-    });
+  logout() {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem("currentUserEmail");
+    localStorage.removeItem("currentUserName");
   },
 
-  socialLogin: async (provider: "google" | "github"): Promise<User> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        console.log(`Logging in with ${provider}`);
-        resolve(mockUser);
-      }, 500);
-    });
+  getToken() {
+    return localStorage.getItem(TOKEN_KEY);
   },
 };

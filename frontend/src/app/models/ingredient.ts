@@ -1,6 +1,5 @@
-//models/ingredient.ts
 export interface Ingredient {
-  id: number;
+  id: string;
   name: string;
   category: string;
   expiry: string;
@@ -12,4 +11,5 @@ export interface Ingredient {
   buyDate?: string;
   expirationDate?: string;
   storeName?: string;
+  isShared?: boolean;
 }
