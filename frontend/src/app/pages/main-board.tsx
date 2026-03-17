@@ -1,4 +1,3 @@
-//main-board.tsx
 import { Link } from "react-router-dom";
 import {
   Bell,
@@ -37,21 +36,10 @@ function getDdayLabel(daysLeft: number | null) {
 
 export function MainBoard() {
   const { ingredients, loading, error } = useIngredients();
-
   const userName = localStorage.getItem("currentUserName") || "User";
 
   const expiringSoonCount = ingredients.filter((ingredient) => {
-    const expirationDate =
-      (ingredient as typeof ingredient & {
-        expirationDate?: string;
-        expiration_date?: string;
-      }).expirationDate ||
-      (ingredient as typeof ingredient & {
-        expirationDate?: string;
-        expiration_date?: string;
-      }).expiration_date;
-
-    const daysLeft = getDaysUntilExpiration(expirationDate);
+    const daysLeft = getDaysUntilExpiration(ingredient.expirationDate);
     return daysLeft !== null && daysLeft >= 0 && daysLeft < 3;
   }).length;
 
@@ -76,10 +64,18 @@ export function MainBoard() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="cursor-pointer rounded-full hover:bg-[#1d7d5e]/10">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="cursor-pointer rounded-full hover:bg-[#1d7d5e]/10"
+            >
               <Bell className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon" className="cursor-pointer rounded-full hover:bg-[#1d7d5e]/10">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="cursor-pointer rounded-full hover:bg-[#1d7d5e]/10"
+            >
               <Settings className="h-5 w-5" />
             </Button>
           </div>
@@ -96,7 +92,9 @@ export function MainBoard() {
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-card rounded-2xl border border-border p-4 shadow-sm">
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-sm text-muted-foreground">Total Ingredients</h2>
+              <h2 className="text-sm text-muted-foreground">
+                Total Ingredients
+              </h2>
               <ChefHat className="h-5 w-5 text-[#1d7d5e]" />
             </div>
             <p className="text-2xl font-semibold">{ingredients.length}</p>
@@ -157,26 +155,8 @@ export function MainBoard() {
           ) : (
             <div className="space-y-3">
               {ingredients.slice(0, 5).map((ingredient) => {
-                const expirationDate =
-                  (ingredient as typeof ingredient & {
-                    expirationDate?: string;
-                    expiration_date?: string;
-                  }).expirationDate ||
-                  (ingredient as typeof ingredient & {
-                    expirationDate?: string;
-                    expiration_date?: string;
-                  }).expiration_date;
-
-                const storeName =
-                  (ingredient as typeof ingredient & {
-                    storeName?: string;
-                    store_name?: string;
-                  }).storeName ||
-                  (ingredient as typeof ingredient & {
-                    storeName?: string;
-                    store_name?: string;
-                  }).store_name;
-
+                const expirationDate = ingredient.expirationDate;
+                const storeName = ingredient.storeName;
                 const daysLeft = getDaysUntilExpiration(expirationDate);
                 const ddayLabel = getDdayLabel(daysLeft);
                 const isUrgent = daysLeft !== null && daysLeft < 3;
@@ -185,7 +165,7 @@ export function MainBoard() {
                 return (
                   <Link
                     key={ingredient.id}
-                    to={`/ingredients/${ingredient.id}/edit`}
+                    to={`/ingredients/${ingredient.id}`}
                     className="block"
                   >
                     <div

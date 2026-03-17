@@ -1,4 +1,3 @@
-// 📁 /src/app/hooks/useAuth.ts
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -12,7 +11,7 @@ type AuthState = {
   error: string | null;
 };
 
-const TOKEN_KEY = "ff_token";
+const TOKEN_KEY = "token";
 
 export function useAuth() {
   const [state, setState] = useState<AuthState>({
@@ -22,40 +21,107 @@ export function useAuth() {
     error: null,
   });
 
-  // bootstrap from localStorage
   useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
+
     if (!token) {
-      setState((s) => ({ ...s, isLoading: false }));
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+      }));
       return;
     }
+
     authService
       .me(token)
-      .then((res) => setState({ user: res.user, token, isLoading: false, error: null }))
-      .catch((err) =>
-        setState({ user: null, token: null, isLoading: false, error: err?.message ?? "Auth error" })
-      );
+      .then((res) =>
+        setState({
+          user: res.user,
+          token,
+          isLoading: false,
+          error: null,
+        }),
+      )
+      .catch((err) => {
+        localStorage.removeItem(TOKEN_KEY);
+
+        setState({
+          user: null,
+          token: null,
+          isLoading: false,
+          error: err instanceof Error ? err.message : "Auth error",
+        });
+      });
   }, []);
 
   const signUp = useCallback(async (input: SignUpInput) => {
-    setState((s) => ({ ...s, isLoading: true, error: null }));
-    const res = await authService.signUp(input);
-    localStorage.setItem(TOKEN_KEY, res.token);
-    setState({ user: res.user, token: res.token, isLoading: false, error: null });
-    return res.user;
+    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+    try {
+      const res = await authService.signUp(input);
+
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: null,
+      }));
+
+      return res.user;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Signup failed";
+
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: message,
+      }));
+
+      throw error;
+    }
   }, []);
 
   const logIn = useCallback(async (input: LoginInput) => {
-    setState((s) => ({ ...s, isLoading: true, error: null }));
-    const res = await authService.logIn(input);
-    localStorage.setItem(TOKEN_KEY, res.token);
-    setState({ user: res.user, token: res.token, isLoading: false, error: null });
-    return res.user;
+    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+    try {
+      const res = await authService.login(input);
+
+      localStorage.setItem(TOKEN_KEY, res.token);
+
+      setState({
+        user: res.user,
+        token: res.token,
+        isLoading: false,
+        error: null,
+      });
+
+      return res.user;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Login failed";
+
+      setState({
+        user: null,
+        token: null,
+        isLoading: false,
+        error: message,
+      });
+
+      throw error;
+    }
   }, []);
 
   const logOut = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
-    setState({ user: null, token: null, isLoading: false, error: null });
+    authService.logout();
+
+    setState({
+      user: null,
+      token: null,
+      isLoading: false,
+      error: null,
+    });
   }, []);
 
   const value = useMemo(
@@ -66,7 +132,7 @@ export function useAuth() {
       logIn,
       logOut,
     }),
-    [state, signUp, logIn, logOut]
+    [state, signUp, logIn, logOut],
   );
 
   return value;

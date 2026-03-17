@@ -1,16 +1,10 @@
+//ingredient-detail.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Camera } from "lucide-react";
+import { ArrowLeft, Camera, Pencil } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
 import { BottomNav } from "../components/BottomNav";
 import { useIngredients } from "../hooks";
 
@@ -39,77 +33,33 @@ function getDdayLabel(targetDate: string) {
   return `D+${Math.abs(diffDays)}`;
 }
 
-function getDaysLeft(targetDate: string) {
-  const today = new Date();
-  const target = new Date(targetDate);
-
-  today.setHours(0, 0, 0, 0);
-  target.setHours(0, 0, 0, 0);
-
-  const diffTime = target.getTime() - today.getTime();
-  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
-}
-
-function getStatus(daysLeft: number): "fresh" | "expiring" | "expired" {
-  if (daysLeft < 0) return "expired";
-  if (daysLeft < 3) return "expiring";
-  return "fresh";
-}
-
 function getCategoryLabel(category: string) {
   const map: Record<string, string> = {
-    vegetable: "Vegetable",
-    fruit: "Fruit",
-    dairy: "Dairy",
-    meat: "Meat",
-    seafood: "Seafood",
-    grain: "Grain",
-    other: "Other",
-    general: "General",
+    vegetable: "🥬 Vegetable",
+    fruit: "🍎 Fruit",
+    dairy: "🥛 Dairy",
+    meat: "🍖 Meat",
+    seafood: "🐟 Seafood",
+    grain: "🌾 Grain",
+    other: "📦 Other",
+    general: "📦 General",
   };
 
-  return map[category] ?? "Other";
+  return map[category.toLowerCase()] ?? "📦 Other";
 }
 
-function getCategoryValue(category: string) {
-  const normalized = category.toLowerCase();
-
-  const map: Record<string, string> = {
-    vegetable: "vegetable",
-    fruit: "fruit",
-    dairy: "dairy",
-    meat: "meat",
-    seafood: "seafood",
-    grain: "grain",
-    other: "other",
-    general: "other",
-  };
-
-  return map[normalized] ?? "other";
-}
-
-function formatExpiry(dateString: string) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-export function EditIngredient() {
+export function IngredientDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { ingredients, loading, update } = useIngredients();
+  const { ingredients, loading } = useIngredients();
 
   const today = useMemo(() => getTodayString(), []);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const [itemName, setItemName] = useState("");
-  const [category, setCategory] = useState("vegetable");
+  const [category, setCategory] = useState("other");
   const [buyDate, setBuyDate] = useState(today);
   const [expiryDate, setExpiryDate] = useState(today);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
 
   const ingredientId = id ?? "";
   const ingredient = ingredients.find((item) => item.id === ingredientId);
@@ -117,63 +67,28 @@ export function EditIngredient() {
   useEffect(() => {
     if (!ingredient || isInitialized) return;
 
-    const expirationDate = ingredient.expirationDate || today;
-    const existingBuyDate = ingredient.buyDate || today;
-
     setItemName(ingredient.name || "");
-    setCategory(getCategoryValue(ingredient.category || "other"));
-    setBuyDate(existingBuyDate);
-    setExpiryDate(expirationDate);
+    setCategory(ingredient.category || "other");
+    setBuyDate(ingredient.buyDate || today);
+    setExpiryDate(ingredient.expirationDate || today);
     setIsInitialized(true);
   }, [ingredient, isInitialized, today]);
 
   const ddayLabel = useMemo(() => getDdayLabel(expiryDate), [expiryDate]);
 
   const fieldClassName =
-    "w-full rounded-xl border border-transparent bg-input-background px-4 py-3 focus-visible:border-[#1d7d5e] focus-visible:ring-[3px] focus-visible:ring-[#1d7d5e]/20";
+    "w-full rounded-xl border border-transparent bg-input-background px-4 py-3";
 
   const handleGoBack = () => {
-    navigate(`/ingredients/${ingredientId}`);
+    navigate("/ingredients");
   };
 
-  const handleSave = async () => {
-    if (!ingredientId) return;
+  const handleGoToEdit = () => {
+    navigate(`/ingredients/${ingredientId}/edit`);
+  };
 
-    const trimmedName = itemName.trim();
-
-    if (!trimmedName) {
-      alert("Please enter an item name.");
-      return;
-    }
-
-    if (!expiryDate) {
-      alert("Please select an expiration date.");
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-
-      const daysLeft = getDaysLeft(expiryDate);
-
-      await update(ingredientId, {
-        name: trimmedName,
-        category: getCategoryLabel(category),
-        expiry: formatExpiry(expiryDate),
-        daysLeft,
-        status: getStatus(daysLeft),
-        buyDate,
-        expirationDate: expiryDate,
-        storeName: "My Fridge",
-      });
-
-      navigate(`/ingredients/${ingredientId}`);
-    } catch (error) {
-      console.error(error);
-      alert("Failed to update ingredient.");
-    } finally {
-      setIsSaving(false);
-    }
+  const handleShare = () => {
+    navigate(`/share/${ingredientId}`);
   };
 
   if (loading && !isInitialized) {
@@ -191,7 +106,7 @@ export function EditIngredient() {
         <Button
           type="button"
           onClick={() => navigate("/ingredients")}
-          className="bg-[#1d7d5e] hover:bg-[#17664c] text-white"
+          className="cursor-pointer bg-[#1d7d5e] text-white hover:bg-[#17664c]"
         >
           Back to Home
         </Button>
@@ -202,28 +117,40 @@ export function EditIngredient() {
   return (
     <div className="min-h-screen bg-background">
       <div className="bg-card px-6 py-4 border-b border-border">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="cursor-pointer rounded-full"
+              onClick={handleGoBack}
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+
+            <h1 className="text-xl">Ingredient Detail</h1>
+          </div>
+
           <Button
             type="button"
             variant="ghost"
-            size="icon"
-            className="rounded-full"
-            onClick={handleGoBack}
+            onClick={handleGoToEdit}
+            className="cursor-pointer flex items-center gap-2 rounded-full px-3"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <Pencil className="w-4 h-4" />
+            Edit
           </Button>
-
-          <h1 className="text-xl">Edit Ingredient</h1>
         </div>
       </div>
 
       <div className="px-6 py-6 pb-44">
         <div className="mb-6">
-          <div className="flex h-48 w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-primary/30 bg-secondary/30 transition-colors hover:bg-secondary/40">
+          <div className="flex h-48 w-full flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-primary/30 bg-secondary/30">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/20">
               <Camera className="h-8 w-8 text-primary" />
             </div>
-            <p className="text-sm text-muted-foreground">Tap to change photo</p>
+            <p className="text-sm text-muted-foreground">Ingredient photo</p>
           </div>
         </div>
 
@@ -236,8 +163,7 @@ export function EditIngredient() {
               id="itemName"
               type="text"
               value={itemName}
-              onChange={(e) => setItemName(e.target.value)}
-              placeholder="e.g., Tomatoes"
+              readOnly
               className={fieldClassName}
             />
           </div>
@@ -246,20 +172,13 @@ export function EditIngredient() {
             <Label htmlFor="category" className="mb-2 block text-sm">
               Category
             </Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="w-full rounded-xl border border-transparent bg-input-background px-4 focus-visible:border-[#1d7d5e] focus-visible:ring-[3px] focus-visible:ring-[#1d7d5e]/20">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="vegetable">🥬 Vegetable</SelectItem>
-                <SelectItem value="fruit">🍎 Fruit</SelectItem>
-                <SelectItem value="dairy">🥛 Dairy</SelectItem>
-                <SelectItem value="meat">🍖 Meat</SelectItem>
-                <SelectItem value="seafood">🐟 Seafood</SelectItem>
-                <SelectItem value="grain">🌾 Grain</SelectItem>
-                <SelectItem value="other">📦 Other</SelectItem>
-              </SelectContent>
-            </Select>
+            <Input
+              id="category"
+              type="text"
+              value={getCategoryLabel(category)}
+              readOnly
+              className={fieldClassName}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -271,7 +190,7 @@ export function EditIngredient() {
                 id="buyDate"
                 type="date"
                 value={buyDate}
-                onChange={(e) => setBuyDate(e.target.value)}
+                readOnly
                 className={fieldClassName}
               />
             </div>
@@ -290,8 +209,7 @@ export function EditIngredient() {
                 id="expiryDate"
                 type="date"
                 value={expiryDate}
-                min={today}
-                onChange={(e) => setExpiryDate(e.target.value)}
+                readOnly
                 className={fieldClassName}
               />
             </div>
@@ -315,11 +233,10 @@ export function EditIngredient() {
       <div className="fixed inset-x-0 bottom-[76px] z-40 bg-background px-6 pb-4 pt-3">
         <Button
           type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="w-full rounded-xl bg-[#1d7d5e] py-6 text-white hover:bg-[#17664c] disabled:opacity-60"
+          onClick={handleShare}
+          className="cursor-pointer w-full rounded-xl bg-[#1d7d5e] py-6 text-white hover:bg-[#17664c]"
         >
-          {isSaving ? "Saving..." : "Save Changes"}
+          Share
         </Button>
       </div>
 

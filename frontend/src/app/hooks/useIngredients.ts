@@ -1,9 +1,9 @@
-//useIngredients.ts
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Ingredient } from "../models/ingredient";
 
 type IngredientApiItem = {
-  _id: string;
+  _id?: string;
+  id?: string;
   name: string;
   category?: string;
   price?: number;
@@ -11,6 +11,10 @@ type IngredientApiItem = {
   purchased_date?: string;
   expiration_date?: string;
   is_shared?: boolean;
+};
+
+type ApiErrorResponse = {
+  message?: string;
 };
 
 type CreateIngredientInput = Omit<Ingredient, "id">;
@@ -82,7 +86,7 @@ function mapApiIngredient(item: IngredientApiItem): Ingredient {
   const daysLeft = getDaysLeft(expirationDate);
 
   return {
-    id: item._id,
+    id: item._id || item.id || "",
     name: item.name,
     category: item.category || "Other",
     expiry: formatExpiry(expirationDate),
@@ -93,31 +97,43 @@ function mapApiIngredient(item: IngredientApiItem): Ingredient {
     buyDate,
     expirationDate,
     storeName: item.store_name || "My Fridge",
+    isShared: Boolean(item.is_shared),
   };
 }
 
 function sortByExpirationDate(data: Ingredient[]) {
   return [...data].sort((a, b) => {
-    const dateA =
-      (a as Ingredient & { expirationDate?: string; expiration_date?: string })
-        .expirationDate ||
-      (a as Ingredient & { expirationDate?: string; expiration_date?: string })
-        .expiration_date ||
-      "";
-
-    const dateB =
-      (b as Ingredient & { expirationDate?: string; expiration_date?: string })
-        .expirationDate ||
-      (b as Ingredient & { expirationDate?: string; expiration_date?: string })
-        .expiration_date ||
-      "";
-
+    const dateA = a.expirationDate || "";
+    const dateB = b.expirationDate || "";
     return dateA.localeCompare(dateB);
   });
 }
 
 async function parseJson<T>(response: Response): Promise<T | null> {
   return (await response.json().catch(() => null)) as T | null;
+}
+
+function isIngredientApiItem(
+  data: IngredientApiItem | ApiErrorResponse | null,
+): data is IngredientApiItem {
+  return !!data && typeof data === "object" && "name" in data;
+}
+
+function getErrorMessage(
+  data: IngredientApiItem | IngredientApiItem[] | ApiErrorResponse | null,
+  fallback: string,
+) {
+  if (
+    data &&
+    !Array.isArray(data) &&
+    typeof data === "object" &&
+    "message" in data &&
+    typeof data.message === "string"
+  ) {
+    return data.message;
+  }
+
+  return fallback;
 }
 
 export function useIngredients() {
@@ -135,20 +151,12 @@ export function useIngredients() {
         headers: getAuthHeaders(),
       });
 
-      const data = await parseJson<IngredientApiItem[] | { message?: string }>(
+      const data = await parseJson<IngredientApiItem[] | ApiErrorResponse>(
         response,
       );
 
       if (!response.ok) {
-        const message =
-          data &&
-          !Array.isArray(data) &&
-          typeof data === "object" &&
-          "message" in data &&
-          typeof data.message === "string"
-            ? data.message
-            : "Failed to load ingredients";
-        throw new Error(message);
+        throw new Error(getErrorMessage(data, "Failed to load ingredients"));
       }
 
       const mapped = Array.isArray(data) ? data.map(mapApiIngredient) : [];
@@ -167,93 +175,55 @@ export function useIngredients() {
   }, [refresh]);
 
   const create = useCallback(async (input: CreateIngredientInput) => {
-    const expirationDate =
-      (input as Ingredient & {
-        expirationDate?: string;
-        expiration_date?: string;
-      }).expirationDate ||
-      (input as Ingredient & {
-        expirationDate?: string;
-        expiration_date?: string;
-      }).expiration_date;
-
-    const buyDate = (input as Ingredient & { buyDate?: string }).buyDate;
-
     const response = await fetch(`${API_BASE_URL}/api/ingredients`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify({
         name: input.name,
-        store_name:
-          (input as Ingredient & { storeName?: string }).storeName ||
-          "My Fridge",
-        purchased_date: buyDate,
-        expiration_date: expirationDate,
+        category: input.category,
+        store_name: input.storeName || "My Fridge",
+        purchased_date: input.buyDate || null,
+        expiration_date: input.expirationDate || null,
       }),
     });
 
-    const data = await parseJson<IngredientApiItem | { message?: string }>(
+    const data = await parseJson<IngredientApiItem | ApiErrorResponse>(
       response,
     );
 
-    if (!response.ok || !data || Array.isArray(data)) {
-      const message =
-        data &&
-        typeof data === "object" &&
-        "message" in data &&
-        typeof data.message === "string"
-          ? data.message
-          : "Failed to create ingredient";
-      throw new Error(message);
+    if (!response.ok || !isIngredientApiItem(data)) {
+      throw new Error(getErrorMessage(data, "Failed to create ingredient"));
     }
 
-    const newItem = mapApiIngredient(data as IngredientApiItem);
+    const newItem = mapApiIngredient(data);
     setIngredients((prev) => sortByExpirationDate([...prev, newItem]));
     return newItem;
   }, []);
 
   const update = useCallback(
     async (id: string, input: UpdateIngredientInput) => {
-      const expirationDate =
-        (input as Ingredient & {
-          expirationDate?: string;
-          expiration_date?: string;
-        }).expirationDate ||
-        (input as Ingredient & {
-          expirationDate?: string;
-          expiration_date?: string;
-        }).expiration_date;
-
-      const buyDate = (input as Ingredient & { buyDate?: string }).buyDate;
-
       const response = await fetch(`${API_BASE_URL}/api/ingredients/${id}`, {
         method: "PATCH",
         headers: getAuthHeaders(),
         body: JSON.stringify({
           name: input.name,
           category: input.category,
-          store_name: (input as Ingredient & { storeName?: string }).storeName,
-          purchased_date: buyDate,
-          expiration_date: expirationDate,
+          store_name: input.storeName,
+          purchased_date: input.buyDate,
+          expiration_date: input.expirationDate,
+          is_shared: input.isShared,
         }),
       });
 
-      const data = await parseJson<IngredientApiItem | { message?: string }>(
+      const data = await parseJson<IngredientApiItem | ApiErrorResponse>(
         response,
       );
 
-      if (!response.ok || !data || Array.isArray(data)) {
-        const message =
-          data &&
-          typeof data === "object" &&
-          "message" in data &&
-          typeof data.message === "string"
-            ? data.message
-            : "Failed to update ingredient";
-        throw new Error(message);
+      if (!response.ok || !isIngredientApiItem(data)) {
+        throw new Error(getErrorMessage(data, "Failed to update ingredient"));
       }
 
-      const updatedItem = mapApiIngredient(data as IngredientApiItem);
+      const updatedItem = mapApiIngredient(data);
 
       setIngredients((prev) =>
         sortByExpirationDate(
@@ -272,17 +242,10 @@ export function useIngredients() {
       headers: getAuthHeaders(),
     });
 
-    const data = await parseJson<{ message?: string }>(response);
+    const data = await parseJson<ApiErrorResponse>(response);
 
     if (!response.ok) {
-      const message =
-        data &&
-        typeof data === "object" &&
-        "message" in data &&
-        typeof data.message === "string"
-          ? data.message
-          : "Failed to delete ingredient";
-      throw new Error(message);
+      throw new Error(getErrorMessage(data, "Failed to delete ingredient"));
     }
 
     setIngredients((prev) => prev.filter((item) => item.id !== id));
