@@ -4,6 +4,7 @@ import type { Ingredient } from "../models/ingredient";
 type IngredientApiItem = {
   _id?: string;
   id?: string;
+  user_id?: string;
   name: string;
   category?: string;
   price?: number;
@@ -17,15 +18,14 @@ type ApiErrorResponse = {
   message?: string;
 };
 
-type CreateIngredientInput = Omit<Ingredient, "id">;
-type UpdateIngredientInput = Partial<Omit<Ingredient, "id">>;
+type CreateIngredientInput = Omit<Ingredient, "_id" | "user_id">;
+type UpdateIngredientInput = Partial<Omit<Ingredient, "_id" | "user_id">>;
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "";
 
 function getAuthHeaders() {
   const token = localStorage.getItem("token");
-
   return {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
@@ -75,36 +75,35 @@ function getCategoryImage(category?: string) {
 }
 
 function mapApiIngredient(item: IngredientApiItem): Ingredient {
-  const expirationDate = item.expiration_date
+  const expiration_date = item.expiration_date
     ? new Date(item.expiration_date).toISOString().slice(0, 10)
     : "";
 
-  const buyDate = item.purchased_date
+  const purchased_date = item.purchased_date
     ? new Date(item.purchased_date).toISOString().slice(0, 10)
     : "";
 
-  const daysLeft = getDaysLeft(expirationDate);
+  // UI 계산용 (필요 시)
+  // const daysLeft = getDaysLeft(expiration_date);
 
   return {
-    id: item._id || item.id || "",
+    // 🔴 중요: 인터페이스 필드명과 1:1 매칭
+    _id: item._id || item.id || "",
+    user_id: item.user_id || "",
     name: item.name,
-    category: item.category || "Other",
-    expiry: formatExpiry(expirationDate),
-    daysLeft,
-    status: getStatus(daysLeft),
-    image: getCategoryImage(item.category),
-    checked: false,
-    buyDate,
-    expirationDate,
-    storeName: item.store_name || "My Fridge",
-    isShared: Boolean(item.is_shared),
+    category: item.category || "Others",
+    price: item.price,
+    store_name: item.store_name || "My Fridge",
+    purchased_date: purchased_date,
+    expiration_date: expiration_date,
+    is_shared: Boolean(item.is_shared),
   };
 }
 
 function sortByExpirationDate(data: Ingredient[]) {
   return [...data].sort((a, b) => {
-    const dateA = a.expirationDate || "";
-    const dateB = b.expirationDate || "";
+    const dateA = a.expiration_date || "";
+    const dateB = b.expiration_date || "";
     return dateA.localeCompare(dateB);
   });
 }
@@ -144,27 +143,20 @@ export function useIngredients() {
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
-
     try {
       const response = await fetch(`${API_BASE_URL}/api/ingredients`, {
         method: "GET",
         headers: getAuthHeaders(),
       });
-
       const data = await parseJson<IngredientApiItem[] | ApiErrorResponse>(
         response,
       );
-
-      if (!response.ok) {
+      if (!response.ok)
         throw new Error(getErrorMessage(data, "Failed to load ingredients"));
-      }
-
       const mapped = Array.isArray(data) ? data.map(mapApiIngredient) : [];
       setIngredients(sortByExpirationDate(mapped));
     } catch (e) {
-      const message =
-        e instanceof Error ? e.message : "Failed to load ingredients";
-      setError(message);
+      setError(e instanceof Error ? e.message : "Failed to load ingredients");
     } finally {
       setLoading(false);
     }
@@ -181,16 +173,16 @@ export function useIngredients() {
       body: JSON.stringify({
         name: input.name,
         category: input.category,
-        store_name: input.storeName || "My Fridge",
-        purchased_date: input.buyDate || null,
-        expiration_date: input.expirationDate || null,
+        price: input.price,
+        store_name: input.store_name, // 🔴 storeName -> store_name
+        purchased_date: input.purchased_date, // 🔴 buyDate -> purchased_date
+        expiration_date: input.expiration_date, // 🔴 expirationDate -> expiration_date
       }),
     });
 
     const data = await parseJson<IngredientApiItem | ApiErrorResponse>(
       response,
     );
-
     if (!response.ok || !isIngredientApiItem(data)) {
       throw new Error(getErrorMessage(data, "Failed to create ingredient"));
     }
@@ -208,29 +200,27 @@ export function useIngredients() {
         body: JSON.stringify({
           name: input.name,
           category: input.category,
-          store_name: input.storeName,
-          purchased_date: input.buyDate,
-          expiration_date: input.expirationDate,
-          is_shared: input.isShared,
+          price: input.price,
+          store_name: input.store_name, // 🔴 수정
+          purchased_date: input.purchased_date, // 🔴 수정
+          expiration_date: input.expiration_date, // 🔴 수정
+          is_shared: input.is_shared, // 🔴 isShared -> is_shared
         }),
       });
 
       const data = await parseJson<IngredientApiItem | ApiErrorResponse>(
         response,
       );
-
       if (!response.ok || !isIngredientApiItem(data)) {
         throw new Error(getErrorMessage(data, "Failed to update ingredient"));
       }
 
       const updatedItem = mapApiIngredient(data);
-
       setIngredients((prev) =>
         sortByExpirationDate(
-          prev.map((item) => (item.id === id ? updatedItem : item)),
+          prev.map((item) => (item._id === id ? updatedItem : item)),
         ),
       );
-
       return updatedItem;
     },
     [],
@@ -241,14 +231,11 @@ export function useIngredients() {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
-
-    const data = await parseJson<ApiErrorResponse>(response);
-
     if (!response.ok) {
+      const data = await parseJson<ApiErrorResponse>(response);
       throw new Error(getErrorMessage(data, "Failed to delete ingredient"));
     }
-
-    setIngredients((prev) => prev.filter((item) => item.id !== id));
+    setIngredients((prev) => prev.filter((item) => item._id !== id));
   }, []);
 
   return useMemo(
