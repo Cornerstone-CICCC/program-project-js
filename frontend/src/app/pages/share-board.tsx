@@ -1,81 +1,41 @@
-import { useState } from "react";
+import { useEffect, useState } from "react"; // useEffect 추가
 import { ArrowLeft, MapPin, Filter, Search } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { BottomNav } from "../components/BottomNav";
+import { shareService } from "../services/shareService"; // 서비스 임포트
 
 export function ShareBoard() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<"all" | "free" | "pickup">("all");
 
-  const sharedItems = [
-    {
-      id: 1,
-      name: "Apples",
-      image: "🍎",
-      status: "Free",
-      from: "Minho",
-      location: "Building B-2",
-      distance: "100m",
-      quantity: "5 apples",
-    },
-    {
-      id: 2,
-      name: "Milk (2L)",
-      image: "🥛",
-      status: "Free",
-      from: "Jiyeon",
-      location: "Building D-5",
-      distance: "250m",
-      quantity: "1 bottle",
-    },
-    {
-      id: 3,
-      name: "Yogurt (3)",
-      image: "🥛",
-      status: "Pickup",
-      from: "Minho",
-      location: "Building D-5",
-      distance: "250m",
-      quantity: "3 cups",
-    },
-    {
-      id: 4,
-      name: "Carrots",
-      image: "🥕",
-      status: "Free",
-      from: "Sora",
-      location: "Building A-1",
-      distance: "50m",
-      quantity: "Bunch of 6",
-    },
-    {
-      id: 5,
-      name: "Bread",
-      image: "🥖",
-      status: "Pickup",
-      from: "Sora",
-      location: "Building C-3",
-      distance: "180m",
-      quantity: "1 loaf",
-    },
-    {
-      id: 6,
-      name: "Strawberries",
-      image: "🍓",
-      status: "Free",
-      from: "Minsu",
-      location: "Building B-4",
-      distance: "120m",
-      quantity: "1 box",
-    },
-  ];
+  // --- 1. 상태 관리 추가 ---
+  const [items, setItems] = useState<any[]>([]); // 서버에서 받아올 아이템들
+  const [loading, setLoading] = useState(true);
 
-  const filteredItems = sharedItems.filter((item) => {
+  // --- 2. 데이터 가져오기 (useEffect) ---
+  useEffect(() => {
+    const fetchSharedPosts = async () => {
+      try {
+        setLoading(true);
+        const data = await shareService.getAll();
+        setItems(data);
+      } catch (error) {
+        console.error("Failed to fetch posts:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSharedPosts();
+  }, []);
+
+  // --- 3. 필터링 로직 (status는 이제 백엔드 필드인 pickup_type과 매칭) ---
+  const filteredItems = items.filter((item) => {
     if (filter === "all") return true;
-    return item.status.toLowerCase() === filter;
+    // 백엔드 pickup_type: "Free" 또는 "Pickup" (대소문자 주의)
+    return item.pickup_type?.toLowerCase() === filter;
   });
 
   return (
@@ -149,51 +109,84 @@ export function ShareBoard() {
 
         {/* Shared Items Grid */}
         <div className="grid grid-cols-2 gap-4">
-          {filteredItems.map((item) => (
-            <div
-              key={item.id}
-              className="bg-card rounded-2xl p-4 border border-border shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="w-full h-24 bg-secondary/30 rounded-xl flex items-center justify-center text-4xl mb-3">
-                {item.image}
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm">{item.name}</h3>
-
-                  <Badge
-                    variant={item.status === "Free" ? "default" : "secondary"}
-                    className={`text-xs rounded-full ${
-                      item.status === "Free"
-                        ? "bg-primary/20 text-primary"
-                        : "bg-accent/20 text-accent"
-                    }`}
-                  >
-                    {item.status}
-                  </Badge>
+          {loading ? (
+            <p className="col-span-2 text-center py-10">
+              Loading shared items...
+            </p>
+          ) : filteredItems.length === 0 ? (
+            <p className="col-span-2 text-center py-10 text-muted-foreground">
+              No items found.
+            </p>
+          ) : (
+            filteredItems.map((item) => (
+              <div
+                key={item._id} // MongoDB의 _id 사용
+                className="bg-card rounded-2xl p-4 border border-border shadow-sm hover:shadow-md transition-shadow"
+                onClick={() => navigate(`/share/${item._id}`)} // 상세 페이지 이동용
+              >
+                {/* 🔴 이미지 처리: URL이 있으면 img 태그, 없으면 기본 아이콘 */}
+                <div className="w-full h-24 bg-secondary/30 rounded-xl flex items-center justify-center overflow-hidden mb-3">
+                  {item.photo_url ? (
+                    <img
+                      src={item.photo_url}
+                      alt={item.ingredient_name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-4xl">📦</span>
+                  )}
                 </div>
 
-                <p className="text-xs text-muted-foreground">{item.quantity}</p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium truncate">
+                      {item.ingredient_name}
+                    </h3>
 
-                <div className="pt-2 border-t border-border">
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-                    <span className="text-sm">👤</span>
-                    <span>From: {item.from}</span>
+                    <Badge
+                      variant={
+                        item.pickup_type === "Free" ? "default" : "secondary"
+                      }
+                      className={`text-[10px] px-2 rounded-full ${
+                        item.pickup_type === "Free"
+                          ? "bg-primary/20 text-primary"
+                          : "bg-accent/20 text-accent"
+                      }`}
+                    >
+                      {item.pickup_type}
+                    </Badge>
                   </div>
 
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <MapPin className="w-3 h-3" />
-                    <span>{item.distance}</span>
+                  <p className="text-xs text-muted-foreground">
+                    {/* 수량 데이터가 모델에 있다면 표시, 없으면 description 일부 표시 */}
+                    {item.description || "No description"}
+                  </p>
+
+                  <div className="pt-2 border-t border-border">
+                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-1">
+                      <span>👤</span>
+                      {/* 백엔드에서 populate("user_id", "name") 했을 경우 */}
+                      <span className="truncate">
+                        From: {item.user_id?.name || "Unknown"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <MapPin className="w-3 h-3" />
+                      <span>{item.distance || "Near you"}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
-        {/* Add Item Button */}
-        <Button className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary hover:bg-primary/90 text-white shadow-lg">
+        {/* Add Item Button: 클릭 시 등록 페이지 이동 */}
+        <Button
+          className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary hover:bg-primary/90 text-white shadow-lg"
+          onClick={() => navigate("/share/add")}
+        >
           <span className="text-2xl">+</span>
         </Button>
       </div>

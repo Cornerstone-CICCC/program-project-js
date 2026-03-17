@@ -1,112 +1,45 @@
-import type { SharedItem } from '../models';
+import axios from "axios";
 
-// Mock shared items data
-const mockSharedItems: SharedItem[] = [
-  {
-    id: 1,
-    name: "Fresh Apples",
-    category: "Fruit",
-    image: "🍎",
-    type: "free",
-    location: "Gangnam, Seoul",
-    distance: "0.5km",
-    user: {
-      name: "Minho",
-      avatar: "👨",
-      rating: 4.8,
-    },
-    description: "5 fresh apples from my garden. Pick up today!",
-    expiryDate: "Apr 24, 2025",
-    createdAt: "2 hours ago",
-  },
-  {
-    id: 2,
-    name: "Homemade Bread",
-    category: "Grain",
-    image: "🥖",
-    type: "pickup",
-    location: "Hongdae, Seoul",
-    distance: "1.2km",
-    user: {
-      name: "Sora",
-      avatar: "👩",
-      rating: 4.9,
-    },
-    description: "Freshly baked bread this morning. Available until 6 PM.",
-    expiryDate: "Apr 23, 2025",
-    createdAt: "5 hours ago",
-  },
-  {
-    id: 3,
-    name: "Organic Vegetables",
-    category: "Vegetable",
-    image: "🥕",
-    type: "exchange",
-    location: "Itaewon, Seoul",
-    distance: "2.1km",
-    user: {
-      name: "Jiwon",
-      avatar: "👩‍🦰",
-      rating: 4.7,
-    },
-    description: "Looking to exchange for dairy products.",
-    createdAt: "1 day ago",
-  },
-];
+// 백엔드 API 기본 주소 설정
+const API_URL = "http://localhost:4000/api/shared-posts";
 
 export const shareService = {
-  // Get all shared items
-  getAll: async (): Promise<SharedItem[]> => {
-    return new Promise((resolve) => {
-      setTimeout(() => resolve([...mockSharedItems]), 300);
-    });
+  // 1. 모든 나눔 게시글 가져오기 (필터링/검색 포함)
+  getAll: async (searchQuery = ""): Promise<any[]> => {
+    const response = await axios.get(`${API_URL}?search=${searchQuery}`);
+    return response.data;
   },
 
-  // Get shared item by ID
-  getById: async (id: number): Promise<SharedItem | undefined> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const item = mockSharedItems.find((item) => item.id === id);
-        resolve(item);
-      }, 300);
-    });
+  // 2. 특정 게시글 상세 정보 가져오기
+  getById: async (id: string): Promise<any> => {
+    const response = await axios.get(`${API_URL}/${id}`);
+    return response.data;
   },
 
-  // Create new shared item
-  create: async (item: Omit<SharedItem, 'id' | 'createdAt'>): Promise<SharedItem> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const newItem: SharedItem = {
-          ...item,
-          id: Math.max(...mockSharedItems.map(i => i.id)) + 1,
-          createdAt: 'Just now',
-        };
-        mockSharedItems.push(newItem);
-        resolve(newItem);
-      }, 300);
-    });
+  // 3. 새로운 나눔 게시글 생성 (사진 포함이므로 FormData 사용)
+  create: async (formData: FormData): Promise<any> => {
+    // ⚠️ 사진 업로드 시에는 headers에 'Content-Type': 'multipart/form-data'가 필요할 수 있으나,
+    // 최근 브라우저/Axios는 FormData를 넘기면 자동으로 설정해줍니다.
+    const response = await axios.post(API_URL, formData);
+    return response.data;
   },
 
-  // Filter by type
-  filterByType: async (type: 'free' | 'pickup' | 'exchange'): Promise<SharedItem[]> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const filtered = mockSharedItems.filter((item) => item.type === type);
-        resolve(filtered);
-      }, 300);
-    });
+  // 4. 내가 공유한(내가 작성한) 게시글만 가져오기
+  // 백엔드에서 이 기능을 지원하도록 컨트롤러/라우터 추가가 필요합니다.
+  getMyPosts: async (): Promise<any[]> => {
+    const response = await axios.get(`${API_URL}/my/posts`);
+    return response.data;
   },
 
-  // Search shared items
-  search: async (query: string): Promise<SharedItem[]> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const results = mockSharedItems.filter((item) =>
-          item.name.toLowerCase().includes(query.toLowerCase()) ||
-          item.category.toLowerCase().includes(query.toLowerCase())
-        );
-        resolve(results);
-      }, 300);
-    });
+  // 5. 나눔 상태 변경 (Available -> Completed 등)
+  updateStatus: async (id: string, status: string): Promise<any> => {
+    const response = await axios.patch(`${API_URL}/${id}`, { status });
+    return response.data;
+  },
+
+  // 6. 게시글 삭제
+  delete: async (id: string): Promise<any> => {
+    const response = await axios.delete(`${API_URL}/${id}`);
+    return response.data;
   },
 };
