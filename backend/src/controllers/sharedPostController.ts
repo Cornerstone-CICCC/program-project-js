@@ -1,32 +1,31 @@
 import { Request, Response } from "express";
 import { SharedPost } from "../models/SharedPost";
 import { Comment } from "../models/Comment"; // 👈 중괄호 확인!
+import { Ingredient } from "../models/Ingredient"; // Ingredient 모델 추가
 
 // @desc    Get all available shared posts (with search)
 export const getSharedPosts = async (req: Request, res: Response) => {
   try {
     const { search } = req.query;
-    let query: any = { status: "available" };
+    let query = {};
 
+    // 💡 참고: SharedPost에 이름이 직접 없으므로
+    // 실제 운영 시에는 Ingredient를 먼저 검색하거나
+    // Aggregate를 사용해야 하지만, 일단 기본 구조 유지
     const posts = await SharedPost.find(query)
-      .populate("ingredient_id")
-      .populate("user_id", "name");
+      .populate({
+        path: "ingredient_id",
+        match: search ? { name: { $regex: search, $options: "i" } } : {},
+      })
+      .populate("user_id", "name")
+      .sort({ created_at: -1 });
 
-    if (search) {
-      const filteredPosts = posts.filter((post: any) => {
-        return (
-          post.ingredient_id &&
-          post.ingredient_id.name
-            .toLowerCase()
-            .includes((search as string).toLowerCase())
-        );
-      });
-      return res.status(200).json(filteredPosts);
-    }
+    // populate match로 인해 조건에 안 맞는 ingredient_id가 null이 된 것들을 필터링
+    const filteredPosts = posts.filter((post) => post.ingredient_id !== null);
 
-    res.status(200).json(posts);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to fetch shared posts." });
+    res.status(200).json(filteredPosts);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -37,19 +36,41 @@ export const createSharedPost = async (req: any, res: Response) => {
       return res.status(401).json({ message: "User authentication failed." });
     }
 
-    const { ingredient_id, pickup_type, photo_url } = req.body;
-
-    if (!ingredient_id || !pickup_type) {
-      return res
-        .status(400)
-        .json({ message: "ingredient_id and pickup_type are required." });
-    }
-
-    const newPost = await SharedPost.create({
+    const {
       ingredient_id,
-      user_id: req.user.id,
+      ingredient_name,
       pickup_type,
       photo_url,
+      expiration_date,
+    } = req.body;
+    let finalIngredientId = ingredient_id;
+
+    // 1. 이름으로 들어온 경우 재료 먼저 생성
+    if (!finalIngredientId && ingredient_name) {
+      const newIngredient = await Ingredient.create({
+        user_id: req.user.id,
+        name: ingredient_name,
+        expiration_date:
+          expiration_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        purchased_date: new Date(),
+        is_shared: true,
+      });
+      finalIngredientId = newIngredient._id;
+    }
+
+    if (!finalIngredientId || !pickup_type) {
+      return res
+        .status(400)
+        .json({ message: "Ingredient and pickup_type are required." });
+    }
+
+    // 2. SharedPost 생성
+    const newPost = await SharedPost.create({
+      ingredient_id: finalIngredientId,
+      user_id: req.user.id,
+      pickup_type,
+      photo_url: photo_url || "",
+      status: "available", // 👈 중요: 모델의 enum과 일치하게 '소문자'로 수정!
     });
 
     const populatedPost = await SharedPost.findById(newPost._id)
@@ -156,5 +177,16 @@ export const deleteSharedPost = async (req: any, res: Response) => {
     res.status(200).json({ message: "Post removed." });
   } catch (error: any) {
     res.status(500).json({ message: "Delete failed." });
+  }
+};
+
+export const getMySharedPosts = async (req: any, res: any) => {
+  try {
+    const myPosts = await SharedPost.find({ user_id: req.user.id })
+      .populate("user_id", "name")
+      .sort({ created_at: -1 });
+    res.json(myPosts);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
   }
 };

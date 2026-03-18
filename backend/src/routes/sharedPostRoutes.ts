@@ -7,6 +7,7 @@ import {
   updatePostStatus,
   deleteSharedPost,
   addComment, // 👈 추가된 부분
+  getMySharedPosts,
 } from "../controllers/sharedPostController";
 import { protect } from "../middlewares/authMiddleware";
 
@@ -21,6 +22,7 @@ router.post("/", protect, createSharedPost);
 router.put("/:id", protect, updateSharedPost); // 전체 수정용
 router.patch("/:id", protect, updatePostStatus); // 상태 변경용 (나눔 완료)
 router.delete("/:id", protect, deleteSharedPost); // 삭제용
+router.get("/my/posts", protect, getMySharedPosts);
 
 // 3. 댓글 작성 (추가)
 router.post("/:id/comments", protect, addComment); // 👈 추가된 부분
