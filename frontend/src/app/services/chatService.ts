@@ -1,127 +1,233 @@
-import type { ChatRoom, ChatMessage } from '../models';
+//src/app/services/chatService.ts
+import type { ChatRoom, ChatMessage } from "../models";
 
-// Mock chat rooms
-const mockChatRooms: ChatRoom[] = [
-  {
-    id: 1,
-    userName: "Minho",
-    userAvatar: "👨",
-    lastMessage: "Sure! I'll be home after 5 PM",
-    time: "10:30 AM",
-    unread: 2,
-    online: true,
-  },
-  {
-    id: 2,
-    userName: "Sora",
-    userAvatar: "👩",
-    lastMessage: "The bread is ready for pickup",
-    time: "Yesterday",
-    unread: 0,
-    online: false,
-  },
-  {
-    id: 3,
-    userName: "Jiwon",
-    userAvatar: "👩‍🦰",
-    lastMessage: "Thanks for the vegetables!",
-    time: "2 days ago",
-    unread: 1,
-    online: true,
-  },
-];
-
-// Mock messages for each chat room
-const mockMessages: Record<number, ChatMessage[]> = {
-  1: [
-    {
-      id: 1,
-      text: "Hi! Are the apples still available?",
-      sender: "user",
-      timestamp: "10:20 AM",
-    },
-    {
-      id: 2,
-      text: "Yes! They are. When can you pick them up?",
-      sender: "other",
-      timestamp: "10:25 AM",
-    },
-    {
-      id: 3,
-      text: "Can I come by this evening?",
-      sender: "user",
-      timestamp: "10:28 AM",
-    },
-    {
-      id: 4,
-      text: "Sure! I'll be home after 5 PM",
-      sender: "other",
-      timestamp: "10:30 AM",
-    },
-  ],
-  2: [],
-  3: [],
+type ChatRoomApiItem = {
+  _id?: string;
+  id?: string | number;
+  user_name?: string;
+  userName?: string;
+  user_avatar?: string;
+  userAvatar?: string;
+  last_message?: string;
+  lastMessage?: string;
+  time?: string;
+  unread?: number;
+  online?: boolean;
 };
 
+type ChatMessageApiItem = {
+  _id?: string;
+  id?: string | number;
+  text?: string;
+  message?: string;
+  sender?: "user" | "other";
+  timestamp?: string;
+  created_at?: string;
+  createdAt?: string;
+};
+
+type ApiErrorResponse = {
+  message?: string;
+};
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "";
+
+function getAuthHeaders() {
+  const token = localStorage.getItem("token");
+
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+}
+
+async function parseJson<T>(response: Response): Promise<T | null> {
+  return (await response.json().catch(() => null)) as T | null;
+}
+
+function getErrorMessage(data: unknown, fallback: string) {
+  if (
+    data &&
+    typeof data === "object" &&
+    "message" in data &&
+    typeof (data as { message?: unknown }).message === "string"
+  ) {
+    return (data as { message: string }).message;
+  }
+
+  return fallback;
+}
+
+function formatRelativeTime(dateString?: string) {
+  if (!dateString) return "";
+
+  const parsed = new Date(dateString);
+  if (Number.isNaN(parsed.getTime())) {
+    return dateString;
+  }
+
+  const now = new Date();
+  const diffMinutes = Math.floor(
+    (now.getTime() - parsed.getTime()) / (1000 * 60),
+  );
+
+  if (diffMinutes < 1) return "Just now";
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) {
+    return parsed.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays}d ago`;
+
+  return parsed.toLocaleDateString();
+}
+
+function formatMessageTime(dateString?: string) {
+  if (!dateString) return "";
+
+  const parsed = new Date(dateString);
+  if (Number.isNaN(parsed.getTime())) {
+    return dateString;
+  }
+
+  return parsed.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function mapChatRoom(item: ChatRoomApiItem): ChatRoom {
+  const rawTime = item.time;
+
+  return {
+    id: String(item._id || item.id || ""),
+    userName: item.userName || item.user_name || "Unknown",
+    userAvatar: item.userAvatar || item.user_avatar || "👤",
+    lastMessage: item.lastMessage || item.last_message || "",
+    time: rawTime ? formatRelativeTime(rawTime) : "",
+    unread: item.unread ?? 0,
+    online: Boolean(item.online),
+  };
+}
+
+function mapChatMessage(item: ChatMessageApiItem): ChatMessage {
+  const rawTimestamp = item.timestamp || item.createdAt || item.created_at;
+
+  return {
+    id: String(item._id || item.id || ""),
+    text: item.text || item.message || "",
+    sender: item.sender === "other" ? "other" : "user",
+    timestamp: formatMessageTime(rawTimestamp),
+  };
+}
+
+function isChatRoomApiItem(data: unknown): data is ChatRoomApiItem {
+  return !!data && typeof data === "object";
+}
+
+function isChatMessageApiItem(data: unknown): data is ChatMessageApiItem {
+  return !!data && typeof data === "object";
+}
+
 export const chatService = {
-  // Get all chat rooms
-  getAllRooms: async (): Promise<ChatRoom[]> => {
-    return new Promise((resolve) => {
-      setTimeout(() => resolve([...mockChatRooms]), 300);
+  async getAllRooms(): Promise<ChatRoom[]> {
+    const response = await fetch(`${API_BASE_URL}/api/chat/rooms`, {
+      method: "GET",
+      headers: getAuthHeaders(),
     });
+
+    const data = await parseJson<ChatRoomApiItem[] | ApiErrorResponse>(response);
+
+    if (!response.ok) {
+      throw new Error(getErrorMessage(data, "Failed to load chat rooms"));
+    }
+
+    return Array.isArray(data) ? data.map(mapChatRoom) : [];
   },
 
-  // Get messages for a chat room
-  getMessages: async (roomId: number): Promise<ChatMessage[]> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const messages = mockMessages[roomId] || [];
-        resolve([...messages]);
-      }, 300);
-    });
+  async getMessages(roomId: string): Promise<ChatMessage[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/chat/rooms/${roomId}/messages`,
+      {
+        method: "GET",
+        headers: getAuthHeaders(),
+      },
+    );
+
+    const data = await parseJson<ChatMessageApiItem[] | ApiErrorResponse>(
+      response,
+    );
+
+    if (!response.ok) {
+      throw new Error(getErrorMessage(data, "Failed to load messages"));
+    }
+
+    return Array.isArray(data) ? data.map(mapChatMessage) : [];
   },
 
-  // Send a message
-  sendMessage: async (roomId: number, text: string): Promise<ChatMessage> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const newMessage: ChatMessage = {
-          id: Date.now(),
-          text,
-          sender: "user",
-          timestamp: new Date().toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          }),
-        };
-        
-        if (!mockMessages[roomId]) {
-          mockMessages[roomId] = [];
-        }
-        mockMessages[roomId].push(newMessage);
-        
-        // Update last message in room
-        const roomIndex = mockChatRooms.findIndex(r => r.id === roomId);
-        if (roomIndex !== -1) {
-          mockChatRooms[roomIndex].lastMessage = text;
-          mockChatRooms[roomIndex].time = 'Just now';
-        }
-        
-        resolve(newMessage);
-      }, 300);
-    });
+  async sendMessage(roomId: string, text: string): Promise<ChatMessage> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/chat/rooms/${roomId}/messages`,
+      {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ text }),
+      },
+    );
+
+    const data = await parseJson<ChatMessageApiItem | ApiErrorResponse>(
+      response,
+    );
+
+    if (!response.ok || !isChatMessageApiItem(data)) {
+      throw new Error(getErrorMessage(data, "Failed to send message"));
+    }
+
+    return mapChatMessage(data);
   },
 
-  // Mark room as read
-  markAsRead: async (roomId: number): Promise<void> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const roomIndex = mockChatRooms.findIndex(r => r.id === roomId);
-        if (roomIndex !== -1) {
-          mockChatRooms[roomIndex].unread = 0;
-        }
-        resolve();
-      }, 100);
+  async markAsRead(roomId: string): Promise<void> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/chat/rooms/${roomId}/read`,
+      {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+      },
+    );
+
+    const data = await parseJson<{ success?: boolean } | ApiErrorResponse>(
+      response,
+    );
+
+    if (!response.ok) {
+      throw new Error(getErrorMessage(data, "Failed to mark chat as read"));
+    }
+  },
+
+  async getRoomById(roomId: string): Promise<ChatRoom | undefined> {
+    const response = await fetch(`${API_BASE_URL}/api/chat/rooms/${roomId}`, {
+      method: "GET",
+      headers: getAuthHeaders(),
     });
+
+    const data = await parseJson<ChatRoomApiItem | ApiErrorResponse>(response);
+
+    if (response.status === 404) {
+      return undefined;
+    }
+
+    if (!response.ok || !isChatRoomApiItem(data)) {
+      throw new Error(getErrorMessage(data, "Failed to load chat room"));
+    }
+
+    return mapChatRoom(data);
   },
 };

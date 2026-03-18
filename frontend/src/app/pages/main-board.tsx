@@ -1,3 +1,4 @@
+//main-board.tsx
 import { Link } from "react-router-dom";
 import {
   Bell,
@@ -7,6 +8,7 @@ import {
   Plus,
   Check,
   AlertTriangle,
+  Share2,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -36,16 +38,16 @@ function getDdayLabel(daysLeft: number | null) {
 
 export function MainBoard() {
   const { ingredients, loading, error } = useIngredients();
+
   const userName = localStorage.getItem("currentUserName") || "User";
 
   const expiringSoonCount = ingredients.filter((ingredient) => {
-    const daysLeft = getDaysUntilExpiration(ingredient.expirationDate);
+    const daysLeft = getDaysUntilExpiration(ingredient.expiration_date);
     return daysLeft !== null && daysLeft >= 0 && daysLeft < 3;
   }).length;
 
   return (
     <div className="min-h-screen bg-background pb-28">
-      {/* Header */}
       <div className="bg-card px-6 py-4 border-b border-border shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -86,9 +88,7 @@ export function MainBoard() {
         </p>
       </div>
 
-      {/* Main Content */}
       <div className="space-y-6 p-6">
-        {/* Stats */}
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-card rounded-2xl border border-border p-4 shadow-sm">
             <div className="mb-2 flex items-center justify-between">
@@ -119,7 +119,6 @@ export function MainBoard() {
           </div>
         </div>
 
-        {/* Recent Ingredients */}
         <div className="bg-card rounded-2xl border border-border p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Recent Ingredients</h2>
@@ -155,8 +154,8 @@ export function MainBoard() {
           ) : (
             <div className="space-y-3">
               {ingredients.slice(0, 5).map((ingredient) => {
-                const expirationDate = ingredient.expirationDate;
-                const storeName = ingredient.storeName;
+                const expirationDate = ingredient.expiration_date;
+                const storeName = ingredient.store_name;
                 const daysLeft = getDaysUntilExpiration(expirationDate);
                 const ddayLabel = getDdayLabel(daysLeft);
                 const isUrgent = daysLeft !== null && daysLeft < 3;
@@ -164,8 +163,8 @@ export function MainBoard() {
 
                 return (
                   <Link
-                    key={ingredient.id}
-                    to={`/ingredients/${ingredient.id}`}
+                    key={ingredient._id}
+                    to={`/ingredients/${ingredient._id}`}
                     className="block"
                   >
                     <div
@@ -184,6 +183,13 @@ export function MainBoard() {
                           >
                             {ingredient.name}
                           </p>
+
+                          {ingredient.is_shared && (
+                            <Badge className="bg-[#1d7d5e]/10 text-[#1d7d5e]">
+                              <Share2 className="mr-1 h-3 w-3" />
+                              Shared
+                            </Badge>
+                          )}
 
                           {isUrgent && (
                             <AlertTriangle className="h-4 w-4 text-red-500" />
@@ -233,7 +239,6 @@ export function MainBoard() {
           )}
         </div>
 
-        {/* Bottom Buttons */}
         <div className="grid grid-cols-2 gap-4">
           <Link to="/ingredients/new">
             <Button className="h-12 w-full cursor-pointer rounded-2xl bg-[#1d7d5e] text-white shadow-sm hover:bg-[#17664c] hover:shadow-md">

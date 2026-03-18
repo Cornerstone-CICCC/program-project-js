@@ -1,4 +1,4 @@
-//ingredient-detail.tsx
+//pages/ingredient-detail.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Camera, Pencil } from "lucide-react";
@@ -7,6 +7,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { BottomNav } from "../components/BottomNav";
 import { useIngredients } from "../hooks";
+import { useToast } from "../components/ui/use-toast";
 
 function getTodayString() {
   const today = new Date();
@@ -51,10 +52,12 @@ function getCategoryLabel(category: string) {
 export function IngredientDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { ingredients, loading } = useIngredients();
+  const { ingredients, loading, update } = useIngredients();
+  const { toast } = useToast();
 
   const today = useMemo(() => getTodayString(), []);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
 
   const [itemName, setItemName] = useState("");
   const [category, setCategory] = useState("other");
@@ -62,15 +65,15 @@ export function IngredientDetail() {
   const [expiryDate, setExpiryDate] = useState(today);
 
   const ingredientId = id ?? "";
-  const ingredient = ingredients.find((item) => item.id === ingredientId);
+  const ingredient = ingredients.find((item) => item._id === ingredientId);
 
   useEffect(() => {
     if (!ingredient || isInitialized) return;
 
     setItemName(ingredient.name || "");
     setCategory(ingredient.category || "other");
-    setBuyDate(ingredient.buyDate || today);
-    setExpiryDate(ingredient.expirationDate || today);
+    setBuyDate(ingredient.purchased_date || today);
+    setExpiryDate(ingredient.expiration_date || today);
     setIsInitialized(true);
   }, [ingredient, isInitialized, today]);
 
@@ -87,8 +90,48 @@ export function IngredientDetail() {
     navigate(`/ingredients/${ingredientId}/edit`);
   };
 
-  const handleShare = () => {
-    navigate(`/share/${ingredientId}`);
+  const handleToggleShare = async () => {
+    if (!ingredientId || !ingredient) return;
+
+    try {
+      setIsSharing(true);
+
+      const nextSharedState = !ingredient.is_shared;
+
+      await update(ingredientId, {
+        name: ingredient.name,
+        category: ingredient.category,
+        price: ingredient.price,
+        store_name: ingredient.store_name,
+        purchased_date: ingredient.purchased_date,
+        expiration_date: ingredient.expiration_date,
+        is_shared: nextSharedState,
+        user_id: ingredient.user_id,
+      });
+
+      toast({
+        title: nextSharedState ? "Shared successfully" : "Share canceled",
+        description: nextSharedState
+          ? `${ingredient.name} has been added to shared items.`
+          : `${ingredient.name} has been removed from shared items.`,
+      });
+
+      if (nextSharedState) {
+        navigate("/share");
+      }
+    } catch (error) {
+      console.error(error);
+
+      toast({
+        title: ingredient.is_shared
+          ? "Failed to cancel share"
+          : "Failed to share item",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSharing(false);
+    }
   };
 
   if (loading && !isInitialized) {
@@ -215,6 +258,14 @@ export function IngredientDetail() {
             </div>
           </div>
 
+          {ingredient?.is_shared && (
+            <div className="rounded-2xl border border-[#1d7d5e]/20 bg-[#1d7d5e]/5 p-4">
+              <p className="text-sm text-[#1d7d5e]">
+                This ingredient is currently shared.
+              </p>
+            </div>
+          )}
+
           <div className="rounded-2xl bg-secondary/20 p-4">
             <div className="flex items-start gap-3">
               <div className="text-2xl">💡</div>
@@ -233,10 +284,21 @@ export function IngredientDetail() {
       <div className="fixed inset-x-0 bottom-[76px] z-40 bg-background px-6 pb-4 pt-3">
         <Button
           type="button"
-          onClick={handleShare}
-          className="cursor-pointer w-full rounded-xl bg-[#1d7d5e] py-6 text-white hover:bg-[#17664c]"
+          onClick={handleToggleShare}
+          disabled={isSharing}
+          className={`cursor-pointer w-full rounded-xl py-6 text-white disabled:opacity-60 ${
+            ingredient?.is_shared
+              ? "bg-red-500 hover:bg-red-600"
+              : "bg-[#1d7d5e] hover:bg-[#17664c]"
+          }`}
         >
-          Share
+          {isSharing
+            ? ingredient?.is_shared
+              ? "Canceling..."
+              : "Sharing..."
+            : ingredient?.is_shared
+              ? "Cancel Share"
+              : "Share"}
         </Button>
       </div>
 

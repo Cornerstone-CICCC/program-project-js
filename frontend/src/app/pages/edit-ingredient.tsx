@@ -1,3 +1,4 @@
+//pages/edit-ingredient.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Camera } from "lucide-react";
@@ -39,23 +40,6 @@ function getDdayLabel(targetDate: string) {
   return `D+${Math.abs(diffDays)}`;
 }
 
-function getDaysLeft(targetDate: string) {
-  const today = new Date();
-  const target = new Date(targetDate);
-
-  today.setHours(0, 0, 0, 0);
-  target.setHours(0, 0, 0, 0);
-
-  const diffTime = target.getTime() - today.getTime();
-  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
-}
-
-function getStatus(daysLeft: number): "fresh" | "expiring" | "expired" {
-  if (daysLeft < 0) return "expired";
-  if (daysLeft < 3) return "expiring";
-  return "fresh";
-}
-
 function getCategoryLabel(category: string) {
   const map: Record<string, string> = {
     vegetable: "Vegetable",
@@ -88,15 +72,6 @@ function getCategoryValue(category: string) {
   return map[normalized] ?? "other";
 }
 
-function formatExpiry(dateString: string) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
 export function EditIngredient() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -112,13 +87,13 @@ export function EditIngredient() {
   const [isInitialized, setIsInitialized] = useState(false);
 
   const ingredientId = id ?? "";
-  const ingredient = ingredients.find((item) => item.id === ingredientId);
+  const ingredient = ingredients.find((item) => item._id === ingredientId);
 
   useEffect(() => {
     if (!ingredient || isInitialized) return;
 
-    const expirationDate = ingredient.expirationDate || today;
-    const existingBuyDate = ingredient.buyDate || today;
+    const expirationDate = ingredient.expiration_date || today;
+    const existingBuyDate = ingredient.purchased_date || today;
 
     setItemName(ingredient.name || "");
     setCategory(getCategoryValue(ingredient.category || "other"));
@@ -154,17 +129,12 @@ export function EditIngredient() {
     try {
       setIsSaving(true);
 
-      const daysLeft = getDaysLeft(expiryDate);
-
       await update(ingredientId, {
         name: trimmedName,
         category: getCategoryLabel(category),
-        expiry: formatExpiry(expiryDate),
-        daysLeft,
-        status: getStatus(daysLeft),
-        buyDate,
-        expirationDate: expiryDate,
-        storeName: "My Fridge",
+        purchased_date: buyDate,
+        expiration_date: expiryDate,
+        store_name: ingredient?.store_name || "My Fridge",
       });
 
       navigate(`/ingredients/${ingredientId}`);
@@ -191,7 +161,7 @@ export function EditIngredient() {
         <Button
           type="button"
           onClick={() => navigate("/ingredients")}
-          className="bg-[#1d7d5e] hover:bg-[#17664c] text-white"
+          className="cursor-pointer bg-[#1d7d5e] hover:bg-[#17664c] text-white"
         >
           Back to Home
         </Button>
@@ -207,7 +177,7 @@ export function EditIngredient() {
             type="button"
             variant="ghost"
             size="icon"
-            className="rounded-full"
+            className="cursor-pointer rounded-full"
             onClick={handleGoBack}
           >
             <ArrowLeft className="w-5 h-5" />
@@ -317,7 +287,7 @@ export function EditIngredient() {
           type="button"
           onClick={handleSave}
           disabled={isSaving}
-          className="w-full rounded-xl bg-[#1d7d5e] py-6 text-white hover:bg-[#17664c] disabled:opacity-60"
+          className="cursor-pointer w-full rounded-xl bg-[#1d7d5e] py-6 text-white hover:bg-[#17664c] disabled:opacity-60"
         >
           {isSaving ? "Saving..." : "Save Changes"}
         </Button>

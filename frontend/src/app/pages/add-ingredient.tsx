@@ -14,6 +14,7 @@ import {
 } from "../components/ui/select";
 import { BottomNav } from "../components/BottomNav";
 import { useIngredients } from "../hooks";
+import { useAuth } from "../hooks/useAuth";
 
 function getTodayString() {
   const today = new Date();
@@ -40,23 +41,6 @@ function getDdayLabel(targetDate: string) {
   return `D+${Math.abs(diffDays)}`;
 }
 
-function getDaysLeft(targetDate: string) {
-  const today = new Date();
-  const target = new Date(targetDate);
-
-  today.setHours(0, 0, 0, 0);
-  target.setHours(0, 0, 0, 0);
-
-  const diffTime = target.getTime() - today.getTime();
-  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
-}
-
-function getStatus(daysLeft: number): "fresh" | "expiring" | "expired" {
-  if (daysLeft < 0) return "expired";
-  if (daysLeft <= 3) return "expiring";
-  return "fresh";
-}
-
 function getCategoryLabel(category: string) {
   const map: Record<string, string> = {
     vegetable: "Vegetable",
@@ -71,32 +55,10 @@ function getCategoryLabel(category: string) {
   return map[category] ?? "Other";
 }
 
-function getCategoryImage(category: string) {
-  const map: Record<string, string> = {
-    vegetable: "🥬",
-    fruit: "🍎",
-    dairy: "🥛",
-    meat: "🍖",
-    seafood: "🐟",
-    grain: "🌾",
-    other: "📦",
-  };
-
-  return map[category] ?? "📦";
-}
-
-function formatExpiry(dateString: string) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
 export function AddIngredient() {
   const navigate = useNavigate();
   const { create } = useIngredients();
+  const { user } = useAuth();
 
   const today = useMemo(() => getTodayString(), []);
 
@@ -128,22 +90,23 @@ export function AddIngredient() {
       return;
     }
 
+    if (!user?.id) {
+      alert("User information is missing. Please log in again.");
+      return;
+    }
+
     try {
       setIsSaving(true);
 
-      const daysLeft = getDaysLeft(expiryDate);
-
       await create({
+        user_id: user.id,
         name: trimmedName,
         category: getCategoryLabel(category),
-        expiry: formatExpiry(expiryDate),
-        daysLeft,
-        status: getStatus(daysLeft),
-        image: getCategoryImage(category),
-        checked: false,
-        buyDate,
-        expirationDate: expiryDate,
-        storeName: "My Fridge",
+        price: 0,
+        store_name: "My Fridge",
+        purchased_date: buyDate,
+        expiration_date: expiryDate,
+        is_shared: false,
       });
 
       navigate("/ingredients");
@@ -163,7 +126,7 @@ export function AddIngredient() {
             type="button"
             variant="ghost"
             size="icon"
-            className="rounded-full"
+            className="cursor-pointer rounded-full"
             onClick={handleGoBack}
           >
             <ArrowLeft className="w-5 h-5" />
@@ -273,7 +236,7 @@ export function AddIngredient() {
           type="button"
           onClick={handleSave}
           disabled={isSaving}
-          className="w-full rounded-xl bg-[#1d7d5e] py-6 text-white hover:bg-[#17664c] disabled:opacity-60"
+          className="cursor-pointer w-full rounded-xl bg-[#1d7d5e] py-6 text-white hover:bg-[#17664c] disabled:opacity-60"
         >
           {isSaving ? "Saving..." : "Save"}
         </Button>

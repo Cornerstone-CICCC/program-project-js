@@ -1,24 +1,15 @@
+//useIngredients.ts
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Ingredient } from "../models/ingredient";
 
-type IngredientApiItem = {
-  _id?: string;
-  id?: string;
-  name: string;
-  category?: string;
-  price?: number;
-  store_name?: string;
-  purchased_date?: string;
-  expiration_date?: string;
-  is_shared?: boolean;
-};
+type IngredientApiItem = Ingredient;
 
 type ApiErrorResponse = {
   message?: string;
 };
 
-type CreateIngredientInput = Omit<Ingredient, "id">;
-type UpdateIngredientInput = Partial<Omit<Ingredient, "id">>;
+type CreateIngredientInput = Omit<Ingredient, "_id" | "created_at">;
+type UpdateIngredientInput = Partial<Omit<Ingredient, "_id" | "created_at">>;
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "";
@@ -32,81 +23,10 @@ function getAuthHeaders() {
   };
 }
 
-function formatExpiry(dateString?: string) {
-  if (!dateString) return "";
-
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function getDaysLeft(dateString?: string) {
-  if (!dateString) return 0;
-
-  const today = new Date();
-  const expiry = new Date(dateString);
-
-  today.setHours(0, 0, 0, 0);
-  expiry.setHours(0, 0, 0, 0);
-
-  const diffTime = expiry.getTime() - today.getTime();
-  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
-}
-
-function getStatus(daysLeft: number): "fresh" | "expiring" | "expired" {
-  if (daysLeft < 0) return "expired";
-  if (daysLeft < 3) return "expiring";
-  return "fresh";
-}
-
-function getCategoryImage(category?: string) {
-  const normalized = (category || "").toLowerCase();
-
-  if (normalized.includes("vegetable")) return "🥬";
-  if (normalized.includes("fruit")) return "🍎";
-  if (normalized.includes("dairy")) return "🥛";
-  if (normalized.includes("meat")) return "🍖";
-  if (normalized.includes("seafood")) return "🐟";
-  if (normalized.includes("grain")) return "🌾";
-  return "📦";
-}
-
-function mapApiIngredient(item: IngredientApiItem): Ingredient {
-  const expirationDate = item.expiration_date
-    ? new Date(item.expiration_date).toISOString().slice(0, 10)
-    : "";
-
-  const buyDate = item.purchased_date
-    ? new Date(item.purchased_date).toISOString().slice(0, 10)
-    : "";
-
-  const daysLeft = getDaysLeft(expirationDate);
-
-  return {
-    id: item._id || item.id || "",
-    name: item.name,
-    category: item.category || "Other",
-    expiry: formatExpiry(expirationDate),
-    daysLeft,
-    status: getStatus(daysLeft),
-    image: getCategoryImage(item.category),
-    checked: false,
-    buyDate,
-    expirationDate,
-    storeName: item.store_name || "My Fridge",
-    isShared: Boolean(item.is_shared),
-  };
-}
-
 function sortByExpirationDate(data: Ingredient[]) {
-  return [...data].sort((a, b) => {
-    const dateA = a.expirationDate || "";
-    const dateB = b.expirationDate || "";
-    return dateA.localeCompare(dateB);
-  });
+  return [...data].sort((a, b) =>
+    (a.expiration_date || "").localeCompare(b.expiration_date || ""),
+  );
 }
 
 async function parseJson<T>(response: Response): Promise<T | null> {
@@ -159,7 +79,7 @@ export function useIngredients() {
         throw new Error(getErrorMessage(data, "Failed to load ingredients"));
       }
 
-      const mapped = Array.isArray(data) ? data.map(mapApiIngredient) : [];
+      const mapped = Array.isArray(data) ? data : [];
       setIngredients(sortByExpirationDate(mapped));
     } catch (e) {
       const message =
@@ -179,11 +99,14 @@ export function useIngredients() {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify({
+        user_id: input.user_id,
         name: input.name,
         category: input.category,
-        store_name: input.storeName || "My Fridge",
-        purchased_date: input.buyDate || null,
-        expiration_date: input.expirationDate || null,
+        price: input.price,
+        store_name: input.store_name,
+        purchased_date: input.purchased_date,
+        expiration_date: input.expiration_date,
+        is_shared: input.is_shared,
       }),
     });
 
@@ -195,7 +118,7 @@ export function useIngredients() {
       throw new Error(getErrorMessage(data, "Failed to create ingredient"));
     }
 
-    const newItem = mapApiIngredient(data);
+    const newItem = data;
     setIngredients((prev) => sortByExpirationDate([...prev, newItem]));
     return newItem;
   }, []);
@@ -206,12 +129,22 @@ export function useIngredients() {
         method: "PATCH",
         headers: getAuthHeaders(),
         body: JSON.stringify({
-          name: input.name,
-          category: input.category,
-          store_name: input.storeName,
-          purchased_date: input.buyDate,
-          expiration_date: input.expirationDate,
-          is_shared: input.isShared,
+          ...(input.user_id !== undefined ? { user_id: input.user_id } : {}),
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.category !== undefined ? { category: input.category } : {}),
+          ...(input.price !== undefined ? { price: input.price } : {}),
+          ...(input.store_name !== undefined
+            ? { store_name: input.store_name }
+            : {}),
+          ...(input.purchased_date !== undefined
+            ? { purchased_date: input.purchased_date }
+            : {}),
+          ...(input.expiration_date !== undefined
+            ? { expiration_date: input.expiration_date }
+            : {}),
+          ...(input.is_shared !== undefined
+            ? { is_shared: input.is_shared }
+            : {}),
         }),
       });
 
@@ -223,11 +156,11 @@ export function useIngredients() {
         throw new Error(getErrorMessage(data, "Failed to update ingredient"));
       }
 
-      const updatedItem = mapApiIngredient(data);
+      const updatedItem = data;
 
       setIngredients((prev) =>
         sortByExpirationDate(
-          prev.map((item) => (item.id === id ? updatedItem : item)),
+          prev.map((item) => (item._id === id ? updatedItem : item)),
         ),
       );
 
@@ -248,7 +181,7 @@ export function useIngredients() {
       throw new Error(getErrorMessage(data, "Failed to delete ingredient"));
     }
 
-    setIngredients((prev) => prev.filter((item) => item.id !== id));
+    setIngredients((prev) => prev.filter((item) => item._id !== id));
   }, []);
 
   return useMemo(

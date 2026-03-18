@@ -1,3 +1,4 @@
+//pages/profile.tsx
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -41,7 +42,7 @@ export function Profile() {
   const itemCount = ingredients.length;
 
   const sharedCount = useMemo(() => {
-    return ingredients.filter((item) => item.isShared).length;
+    return ingredients.filter((item) => item.is_shared).length;
   }, [ingredients]);
 
   const stats = [
@@ -122,7 +123,7 @@ export function Profile() {
           <Button
             variant="ghost"
             size="icon"
-            className="rounded-full"
+            className="cursor-pointer rounded-full"
             onClick={() => navigate("/ingredients")}
           >
             <ArrowLeft className="w-5 h-5" />
@@ -167,7 +168,7 @@ export function Profile() {
       <div className="px-6 pt-8">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-medium">Notifications</h2>
-          <button type="button" className="text-primary text-sm">
+          <button type="button" className="cursor-pointer text-primary text-sm">
             Mark all as read
           </button>
         </div>
@@ -243,7 +244,7 @@ export function Profile() {
               <button
                 type="button"
                 onClick={setting.onToggle}
-                className={`w-14 h-8 rounded-full relative transition-colors ${
+                className={`cursor-pointer w-14 h-8 rounded-full relative transition-colors ${
                   setting.enabled ? "bg-primary" : "bg-gray-300"
                 }`}
               >
@@ -258,7 +259,7 @@ export function Profile() {
 
           <Button
             variant="outline"
-            className="w-full h-16 rounded-3xl bg-[#f3fbf8] border-[#d6ece6]"
+            className="cursor-pointer w-full h-16 rounded-3xl bg-[#f3fbf8] border-[#d6ece6]"
           >
             <Settings className="w-5 h-5 mr-2" />
             More Settings
@@ -267,7 +268,7 @@ export function Profile() {
           <Button
             variant="outline"
             onClick={handleLogout}
-            className="w-full h-16 rounded-3xl border-red-300 text-red-500 hover:bg-red-50"
+            className="cursor-pointer w-full h-16 rounded-3xl border-red-300 text-red-500 hover:bg-red-50"
           >
             Log Out
           </Button>
