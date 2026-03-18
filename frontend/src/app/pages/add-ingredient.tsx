@@ -14,7 +14,6 @@ import {
 } from "../components/ui/select";
 import { BottomNav } from "../components/BottomNav";
 import { useIngredients } from "../hooks";
-import { useAuth } from "../hooks/useAuth";
 
 function getTodayString() {
   const today = new Date();
@@ -58,7 +57,6 @@ function getCategoryLabel(category: string) {
 export function AddIngredient() {
   const navigate = useNavigate();
   const { create } = useIngredients();
-  const { user } = useAuth();
 
   const today = useMemo(() => getTodayString(), []);
 
@@ -90,16 +88,10 @@ export function AddIngredient() {
       return;
     }
 
-    if (!user?.id) {
-      alert("User information is missing. Please log in again.");
-      return;
-    }
-
     try {
       setIsSaving(true);
 
       await create({
-        user_id: user.id,
         name: trimmedName,
         category: getCategoryLabel(category),
         price: 0,
