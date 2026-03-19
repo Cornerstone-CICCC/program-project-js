@@ -42,7 +42,39 @@ export const createSharedPost = async (req: any, res: Response) => {
       photo_url,
       expiration_date,
       description,
+      location,
     } = req.body;
+
+    // 🟢 1. Location 데이터 파싱 및 검증 보강
+    let parsedLocation = null;
+    if (location) {
+      try {
+        // 문자열이면 파싱, 이미 객체면 그대로 사용
+        const rawLocation =
+          typeof location === "string" ? JSON.parse(location) : location;
+
+        // 데이터 구조가 GeoJSON 형식([경도, 위도])을 갖췄는지 확인
+        if (rawLocation && Array.isArray(rawLocation.coordinates)) {
+          parsedLocation = {
+            type: "Point",
+            coordinates: rawLocation.coordinates.map(Number), // 숫자로 확실히 변환
+          };
+        }
+      } catch (e) {
+        console.error("Location parsing error:", e);
+      }
+    }
+
+    // 🔴 2. 중요: 위치 정보가 끝까지 없으면 에러를 내거나 기본값을 줘야 합니다.
+    // 스키마에서 required: true 이므로, 좌표가 없으면 여기서 미리 잡아주는게 안전합니다.
+    if (
+      !parsedLocation ||
+      !parsedLocation.coordinates ||
+      parsedLocation.coordinates.length !== 2
+    ) {
+      // 에러를 내고 싶지 않다면 기본 좌표(예: 서울 127, 37)를 넣어주세요.
+      parsedLocation = { type: "Point", coordinates: [127.0276, 37.4979] };
+    }
 
     let finalIngredientId = ingredient_id;
     if (!finalIngredientId && ingredient_name) {
@@ -57,6 +89,7 @@ export const createSharedPost = async (req: any, res: Response) => {
       finalIngredientId = newIngredient._id;
     }
 
+    // 🟢 3. SharedPost 생성
     const newPost = await SharedPost.create({
       ingredient_id: finalIngredientId,
       user_id: userId,
@@ -65,14 +98,16 @@ export const createSharedPost = async (req: any, res: Response) => {
       ingredient_name: ingredient_name || "",
       photo_url: photo_url || "",
       status: "available",
+      location: parsedLocation, // 확실히 파싱된 객체 삽입
     });
 
     const populatedPost = await SharedPost.findById(newPost._id)
       .populate("ingredient_id")
-      .populate("user_id", "firstName lastName fullName"); // 🟢 [수정] "name" -> "firstName lastName fullName"
+      .populate("user_id", "firstName lastName fullName");
 
     res.status(201).json(populatedPost);
   } catch (error: any) {
+    console.error("Create Post Error:", error); // 서버 콘솔에서 상세 에러 확인용
     res
       .status(400)
       .json({ message: "Failed to create shared post.", error: error.message });

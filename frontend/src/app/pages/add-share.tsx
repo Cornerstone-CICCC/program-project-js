@@ -53,6 +53,32 @@ export function AddShare() {
     try {
       setIsSaving(true);
 
+      // 1. 위치 정보 가져오기 (Promise로 감싸서 위치 정보를 기다림)
+      let locationData = { type: "Point", coordinates: [0, 0] };
+      try {
+        if ("geolocation" in navigator) {
+          const position = await new Promise<GeolocationPosition>(
+            (resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 5000,
+              });
+            },
+          );
+          // 🔴 MongoDB GeoJSON 형식: [경도(lng), 위도(lat)] 순서 주의!
+          locationData = {
+            type: "Point",
+            coordinates: [position.coords.longitude, position.coords.latitude],
+          };
+        }
+      } catch (geoError) {
+        console.warn(
+          "Location access denied or timed out. Saving with default coords.",
+          geoError,
+        );
+        // 위치 권한을 거부해도 등록은 가능하게 하려면 여기서 alert를 띄우지 않고 진행합니다.
+      }
+
       const cloudinaryFormData = new FormData();
       cloudinaryFormData.append("file", imageFile);
       cloudinaryFormData.append("upload_preset", "Project");
@@ -73,7 +99,9 @@ export function AddShare() {
       finalFormData.append("expiration_date", expiryDate);
       finalFormData.append("pickup_type", pickupType);
       finalFormData.append("description", description);
-      finalFormData.append("photo_url", imageUrl); // 파일 대신 문자열 URL을 추가
+      finalFormData.append("photo_url", imageUrl);
+
+      finalFormData.append("location", JSON.stringify(locationData));
 
       // 이제 타입 에러 없이 전송됩니다!
       await shareService.create(finalFormData);

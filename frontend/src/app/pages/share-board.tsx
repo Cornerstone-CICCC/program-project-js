@@ -7,8 +7,28 @@ import { useNavigate } from "react-router-dom";
 import { BottomNav } from "../components/BottomNav";
 import { shareService } from "../services/shareService"; // 서비스 임포트
 
+const getDistance = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+) => {
+  const R = 6371; // 지구 반지름 (km)
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
 export function ShareBoard() {
   const navigate = useNavigate();
+
   const [typeFilter, setTypeFilter] = useState<"all" | "free" | "pickup">(
     "all",
   );
@@ -17,6 +37,12 @@ export function ShareBoard() {
   >("available");
 
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [userCoords, setUserCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [radius, setRadius] = useState(5); // 기본 반경 5km
 
   // --- 1. 상태 관리 추가 ---
   const [items, setItems] = useState<any[]>([]); // 서버에서 받아올 아이템들
@@ -35,25 +61,57 @@ export function ShareBoard() {
         setLoading(false);
       }
     };
+
+    // 내 GPS 위치 가져오기
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserCoords({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        (error) => console.error("GPS Error:", error),
+      );
+    }
+
     fetchSharedPosts();
   }, []);
 
-  const filteredItems = items.filter((item) => {
-    // 1. 나눔 방식 필터 (Free / Pickup)
-    const matchesType =
-      typeFilter === "all" || item.pickup_type?.toLowerCase() === typeFilter;
+  const filteredItems = items
+    .filter((item) => {
+      // 1) 방식 필터
+      const matchesType =
+        typeFilter === "all" || item.pickup_type?.toLowerCase() === typeFilter;
+      // 2) 상태 필터
+      const matchesStatus =
+        statusFilter === "all" || item.status === statusFilter;
+      // 3) 검색어 필터
+      const matchesSearch = item.ingredient_name
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase());
 
-    // 2. 나눔 상태 필터 (Available / Completed)
-    const matchesStatus =
-      statusFilter === "all" || item.status === statusFilter;
+      // 🟢 거리 계산 (UI 표시용)
+      if (userCoords && item.location?.coordinates) {
+        const [itemLng, itemLat] = item.location.coordinates;
+        const distance = getDistance(
+          userCoords.lat,
+          userCoords.lng,
+          itemLat,
+          itemLng,
+        );
+        item.calculatedDistance = distance.toFixed(1);
+      } else {
+        item.calculatedDistance = null;
+      }
 
-    // 3. 🟢 검색어 필터 (제목에 검색어가 포함되어 있는지 확인)
-    const matchesSearch = item.ingredient_name
-      ?.toLowerCase()
-      .includes(searchQuery.toLowerCase());
-
-    return matchesType && matchesStatus && matchesSearch; // 🟢 세 조건 모두 만족
-  });
+      return matchesType && matchesStatus && matchesSearch;
+    })
+    // 🟢 4. 최신순 정렬 (최근에 등록된 글이 맨 위로!)
+    .sort((a, b) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      // 만약 createdAt이 없다면 b._id.toString().localeCompare(a._id.toString()) 를 사용하세요.
+    });
 
   return (
     <div className="min-h-screen bg-background pb-28">
@@ -224,9 +282,32 @@ export function ShareBoard() {
                         }
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                      <MapPin className="w-3 h-3" />
-                      <span>{item.distance || "Near you"}</span>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <div className="flex items-center gap-1 text-muted-foreground font-medium">
+                        <MapPin
+                          className={`w-3 h-3 ${
+                            item.calculatedDistance &&
+                            Number(item.calculatedDistance) < 1
+                              ? "text-orange-500"
+                              : "text-muted-foreground"
+                          }`}
+                        />
+                        <span>
+                          {/* 🟢 수정: null이나 undefined가 아닐 때만 숫자를 보여주도록 엄격하게 체크 */}
+                          {item.calculatedDistance !== null &&
+                          item.calculatedDistance !== undefined
+                            ? `${item.calculatedDistance} km away`
+                            : "Near you"}
+                        </span>
+                      </div>
+
+                      {/* 🟢 거리 기반 추천 태그 (선택사항) */}
+                      {item.calculatedDistance &&
+                        Number(item.calculatedDistance) < 0.5 && (
+                          <span className="text-[9px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-md font-bold animate-pulse">
+                            SUPER CLOSE
+                          </span>
+                        )}
                     </div>
                   </div>
                 </div>
