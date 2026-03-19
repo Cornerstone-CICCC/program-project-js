@@ -46,4 +46,23 @@ export const shareService = {
     });
     return response.data;
   },
+
+  // shareService.ts 에 추가
+  updateStatus: async (
+    id: string,
+    status: "available" | "completed" | "canceled",
+  ): Promise<any> => {
+    const token = localStorage.getItem("token");
+    // PATCH 또는 PUT (백엔드 라우트 설정에 맞춤, 여기선 PATCH 권장)
+    const response = await axios.patch(
+      `http://localhost:4000/api/shared-posts/${id}`,
+      { status },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+    return response.data;
+  },
 };

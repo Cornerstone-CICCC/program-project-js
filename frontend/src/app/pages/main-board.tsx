@@ -39,7 +39,7 @@ export function MainBoard() {
   const userName = localStorage.getItem("currentUserName") || "User";
 
   const expiringSoonCount = ingredients.filter((ingredient) => {
-    const daysLeft = getDaysUntilExpiration(ingredient.expirationDate);
+    const daysLeft = getDaysUntilExpiration(ingredient.expiration_date);
     return daysLeft !== null && daysLeft >= 0 && daysLeft < 3;
   }).length;
 
@@ -155,8 +155,8 @@ export function MainBoard() {
           ) : (
             <div className="space-y-3">
               {ingredients.slice(0, 5).map((ingredient) => {
-                const expirationDate = ingredient.expirationDate;
-                const storeName = ingredient.storeName;
+                const expirationDate = ingredient.expiration_date;
+                const storeName = ingredient.store_name;
                 const daysLeft = getDaysUntilExpiration(expirationDate);
                 const ddayLabel = getDdayLabel(daysLeft);
                 const isUrgent = daysLeft !== null && daysLeft < 3;
@@ -164,8 +164,8 @@ export function MainBoard() {
 
                 return (
                   <Link
-                    key={ingredient.id}
-                    to={`/ingredients/${ingredient.id}`}
+                    key={ingredient._id || ingredient._id} // 🔴 id 대신 _id를 우선적으로 사용하도록 수정
+                    to={`/ingredients/${ingredient._id || ingredient._id}`} // 🔴 이동 경로도 맞춰줍니다
                     className="block"
                   >
                     <div

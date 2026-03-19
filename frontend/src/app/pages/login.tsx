@@ -35,7 +35,16 @@ export function Login() {
         password: trimmedPassword,
       });
 
+      // 1. 토큰 저장
       localStorage.setItem("token", result.token);
+
+      // 🔴 추가된 부분: 유저의 고유 ID를 저장합니다.
+      // 서버에서 넘겨주는 유저 객체 안에 _id 혹은 id가 들어있을 거예요.
+      const userId = result.user._id || result.user.id;
+      if (userId) {
+        localStorage.setItem("userId", userId);
+      }
+
       localStorage.setItem("currentUserEmail", result.user.email);
       localStorage.setItem(
         "currentUserName",
@@ -44,13 +53,12 @@ export function Login() {
           "User",
       );
 
+      // 로그인 성공 후 페이지 이동
       navigate("/ingredients");
     } catch (err) {
       console.error("Login failed:", err);
-
       const message =
         err instanceof Error ? err.message : "Login failed. Please try again.";
-
       setError(message);
     } finally {
       setIsLoading(false);

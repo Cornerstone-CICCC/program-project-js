@@ -120,12 +120,24 @@ export function ShareBoard() {
           ) : (
             filteredItems.map((item) => (
               <div
-                key={item._id} // MongoDB의 _id 사용
-                className="bg-card rounded-2xl p-4 border border-border shadow-sm hover:shadow-md transition-shadow"
-                onClick={() => navigate(`/share/${item._id}`)} // 상세 페이지 이동용
+                key={item._id}
+                // 🔴 1. 완료된 아이템은 흐릿하게(opacity-50) 보이고 흑백(grayscale) 처리합니다.
+                className={`bg-card rounded-2xl p-4 border border-border shadow-sm transition-all 
+          ${item.status === "completed" ? "opacity-60 grayscale cursor-default" : "hover:shadow-md cursor-pointer"}`}
+                onClick={() =>
+                  item.status !== "completed" && navigate(`/share/${item._id}`)
+                }
               >
-                {/* 🔴 이미지 처리: URL이 있으면 img 태그, 없으면 기본 아이콘 */}
-                <div className="w-full h-24 bg-secondary/30 rounded-xl flex items-center justify-center overflow-hidden mb-3">
+                <div className="relative w-full h-24 bg-secondary/30 rounded-xl flex items-center justify-center overflow-hidden mb-3">
+                  {/* 🔴 2. 완료된 아이템 위에 "COMPLETED" 라벨 표시 */}
+                  {item.status === "completed" && (
+                    <div className="absolute inset-0 z-10 bg-black/40 flex items-center justify-center">
+                      <span className="text-white font-bold text-xs border-2 border-white px-2 py-1 rounded-lg uppercase tracking-wider rotate-[-10deg]">
+                        Completed
+                      </span>
+                    </div>
+                  )}
+
                   {item.photo_url ? (
                     <img
                       src={item.photo_url}
@@ -143,34 +155,38 @@ export function ShareBoard() {
                       {item.ingredient_name}
                     </h3>
 
+                    {/* 🔴 3. 배지 색상도 상태에 따라 변경 */}
                     <Badge
                       variant={
-                        item.pickup_type === "Free" ? "default" : "secondary"
+                        item.status === "completed"
+                          ? "secondary"
+                          : item.pickup_type === "Free"
+                            ? "default"
+                            : "secondary"
                       }
                       className={`text-[10px] px-2 rounded-full ${
-                        item.pickup_type === "Free"
-                          ? "bg-primary/20 text-primary"
-                          : "bg-accent/20 text-accent"
+                        item.status === "completed"
+                          ? "bg-gray-200 text-gray-500"
+                          : item.pickup_type === "Free"
+                            ? "bg-primary/20 text-primary"
+                            : "bg-accent/20 text-accent"
                       }`}
                     >
-                      {item.pickup_type}
+                      {item.status === "completed" ? "Done" : item.pickup_type}
                     </Badge>
                   </div>
 
-                  <p className="text-xs text-muted-foreground">
-                    {/* 수량 데이터가 모델에 있다면 표시, 없으면 description 일부 표시 */}
+                  <p className="text-xs text-muted-foreground line-clamp-1">
                     {item.description || "No description"}
                   </p>
 
                   <div className="pt-2 border-t border-border">
                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-1">
                       <span>👤</span>
-                      {/* 백엔드에서 populate("user_id", "name") 했을 경우 */}
                       <span className="truncate">
                         From: {item.user_id?.name || "Unknown"}
                       </span>
                     </div>
-
                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                       <MapPin className="w-3 h-3" />
                       <span>{item.distance || "Near you"}</span>

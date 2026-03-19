@@ -14,6 +14,7 @@ import {
 } from "../components/ui/select";
 import { BottomNav } from "../components/BottomNav";
 import { shareService } from "../services/shareService";
+import axios from "axios";
 
 function getTodayString() {
   const today = new Date();
@@ -47,23 +48,44 @@ export function AddShare() {
 
   const handleSave = async () => {
     if (!itemName.trim()) return alert("Please enter an item name.");
+    if (!imageFile) return alert("Please take or select a photo.");
 
     try {
       setIsSaving(true);
-      const formData = new FormData();
-      formData.append("ingredient_name", itemName);
-      formData.append("category", category);
-      formData.append("expiration_date", expiryDate);
-      formData.append("pickup_type", pickupType);
-      formData.append("description", description);
-      if (imageFile) formData.append("image", imageFile);
 
-      await shareService.create(formData);
+      const cloudinaryFormData = new FormData();
+      cloudinaryFormData.append("file", imageFile);
+      cloudinaryFormData.append("upload_preset", "Project");
+      const cloudName = "dwc2isol3";
+
+      const cloudRes = await axios.post(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        cloudinaryFormData,
+      );
+
+      const imageUrl = cloudRes.data.secure_url;
+
+      // --- 2. 서비스 전송을 위한 FormData 생성 ---
+      // shareService.create가 FormData를 요구하므로 형식에 맞춰줍니다.
+      const finalFormData = new FormData();
+      finalFormData.append("ingredient_name", itemName);
+      finalFormData.append("category", category);
+      finalFormData.append("expiration_date", expiryDate);
+      finalFormData.append("pickup_type", pickupType);
+      finalFormData.append("description", description);
+      finalFormData.append("photo_url", imageUrl); // 파일 대신 문자열 URL을 추가
+
+      // 이제 타입 에러 없이 전송됩니다!
+      await shareService.create(finalFormData);
+
       alert("Shared successfully!");
       navigate("/share");
-    } catch (error) {
-      console.error(error);
-      alert("Failed to share item.");
+    } catch (error: any) {
+      // 🟢 에러 상세 분석 로그
+      console.error("Cloudinary Error Response:", error.response?.data);
+      alert(
+        `Upload Failed: ${error.response?.data?.error?.message || "Unknown Error"}`,
+      );
     } finally {
       setIsSaving(false);
     }

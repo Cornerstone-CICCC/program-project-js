@@ -1,5 +1,6 @@
 export interface User {
-  id: string;
+  _id: string; // 🔴 MongoDB의 고유 식별자 추가
+  id?: string; // (선택 사항) 기존 코드와의 호환성을 위해 유지
   firstName?: string;
   lastName?: string;
   fullName?: string;
