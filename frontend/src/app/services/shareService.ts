@@ -1,45 +1,49 @@
-import axios from "axios";
+import axios from "axios"; // 1. axios 임포트 확인
 
-// 백엔드 API 기본 주소 설정
+// 2. 백엔드 주소 설정 (기존에 쓰던 주소로 확인하세요)
 const API_URL = "http://localhost:4000/api/shared-posts";
 
 export const shareService = {
-  // 1. 모든 나눔 게시글 가져오기 (필터링/검색 포함)
-  getAll: async (searchQuery = ""): Promise<any[]> => {
-    const response = await axios.get(`${API_URL}?search=${searchQuery}`);
+  // 전체 가져오기
+  getAll: async () => {
+    const response = await axios.get(API_URL);
     return response.data;
   },
 
-  // 2. 특정 게시글 상세 정보 가져오기
-  getById: async (id: string): Promise<any> => {
+  // 상세 가져오기
+  getById: async (id: string) => {
     const response = await axios.get(`${API_URL}/${id}`);
     return response.data;
   },
 
-  // 3. 새로운 나눔 게시글 생성 (사진 포함이므로 FormData 사용)
+  // 🟢 401 에러와 'api' 미정의 문제를 해결한 create 함수
   create: async (formData: FormData): Promise<any> => {
-    // ⚠️ 사진 업로드 시에는 headers에 'Content-Type': 'multipart/form-data'가 필요할 수 있으나,
-    // 최근 브라우저/Axios는 FormData를 넘기면 자동으로 설정해줍니다.
-    const response = await axios.post(API_URL, formData);
+    const token = localStorage.getItem("token");
+
+    // api 대신 axios를 직접 사용하거나,
+    // 기존에 선언된 인스턴스 이름으로 바꿔주세요.
+    const response = await axios.post(
+      "http://localhost:4000/api/shared-posts",
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data", // 👈 이 헤더가 중요합니다.
+        },
+      },
+    );
     return response.data;
   },
 
-  // 4. 내가 공유한(내가 작성한) 게시글만 가져오기
-  // 백엔드에서 이 기능을 지원하도록 컨트롤러/라우터 추가가 필요합니다.
-  getMyPosts: async (): Promise<any[]> => {
-    const response = await axios.get(`${API_URL}/my/posts`);
-    return response.data;
-  },
-
-  // 5. 나눔 상태 변경 (Available -> Completed 등)
-  updateStatus: async (id: string, status: string): Promise<any> => {
-    const response = await axios.patch(`${API_URL}/${id}`, { status });
-    return response.data;
-  },
-
-  // 6. 게시글 삭제
-  delete: async (id: string): Promise<any> => {
-    const response = await axios.delete(`${API_URL}/${id}`);
+  // 수정하기
+  update: async (id: string, formData: FormData) => {
+    const token = localStorage.getItem("token");
+    const response = await axios.put(`${API_URL}/${id}`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
     return response.data;
   },
 };

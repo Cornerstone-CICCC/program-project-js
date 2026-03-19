@@ -1,4 +1,5 @@
 import express from "express";
+import multer from "multer"; // 1. multer 임포트
 import {
   getSharedPosts,
   createSharedPost,
@@ -6,25 +7,25 @@ import {
   updateSharedPost,
   updatePostStatus,
   deleteSharedPost,
-  addComment, // 👈 추가된 부분
+  addComment,
   getMySharedPosts,
 } from "../controllers/sharedPostController";
 import { protect } from "../middlewares/authMiddleware";
 
+// 2. multer 설정 (메모리에 임시 저장하거나 경로 설정 가능)
+const upload = multer();
 const router = express.Router();
 
-// 1. 조회 (모두 허용)
 router.get("/", getSharedPosts);
+router.get("/my/posts", protect, getMySharedPosts);
 router.get("/:id", getSharedPostById);
 
-// 2. 작성/수정/삭제 (로그인 필요)
-router.post("/", protect, createSharedPost);
-router.put("/:id", protect, updateSharedPost); // 전체 수정용
-router.patch("/:id", protect, updatePostStatus); // 상태 변경용 (나눔 완료)
-router.delete("/:id", protect, deleteSharedPost); // 삭제용
-router.get("/my/posts", protect, getMySharedPosts);
+// 3. 🔴 여기 중요! upload.any() 또는 .single("image")를 추가합니다.
+router.post("/", protect, upload.any(), createSharedPost);
+router.put("/:id", protect, upload.any(), updateSharedPost);
 
-// 3. 댓글 작성 (추가)
-router.post("/:id/comments", protect, addComment); // 👈 추가된 부분
+router.patch("/:id", protect, updatePostStatus);
+router.delete("/:id", protect, deleteSharedPost);
+router.post("/:id/comments", protect, addComment);
 
 export default router;

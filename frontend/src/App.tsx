@@ -12,6 +12,7 @@ import { ShareBoard } from "./app/pages/share-board";
 import { Chat } from "./app/pages/chat";
 import { Notifications } from "./app/pages/notifications";
 import { RecipeGenerator } from "./app/pages/recipe-generator";
+import { AddShare } from "./app/pages/add-share";
 
 export default function App() {
   return (
@@ -20,19 +21,17 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
       <Route path="/profile" element={<Profile />} />
-
       <Route path="/ingredients" element={<MainBoard />} />
       <Route path="/ingredients/new" element={<AddIngredient />} />
       <Route path="/ingredients/:id" element={<IngredientDetail />} />
       <Route path="/ingredients/:id/edit" element={<EditIngredient />} />
-
       <Route path="/share" element={<ShareBoard />} />
-      <Route path="/share/:id" element={<ShareBoard />} />
-
+      <Route path="/share/add" element={<AddShare />} /> {/* 🟢 추가 */}
+      {/* <Route path="/share/:id" element={<ShareDetail />} />
+      <Route path="/share/:id/edit" element={<ShareEdit />} /> */}
       <Route path="/chat" element={<Chat />} />
       <Route path="/notifications" element={<Notifications />} />
       <Route path="/recipes" element={<RecipeGenerator />} />
-
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
