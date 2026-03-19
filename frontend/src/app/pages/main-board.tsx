@@ -13,6 +13,8 @@ import { Badge } from "../components/ui/badge";
 import { useIngredients } from "../hooks";
 import logo from "../../assets/logo.png";
 import { BottomNav } from "../components/BottomNav";
+import { useEffect, useState } from "react";
+import { shareService } from "../services/shareService";
 
 function getDaysUntilExpiration(dateString?: string) {
   if (!dateString) return null;
@@ -36,222 +38,190 @@ function getDdayLabel(daysLeft: number | null) {
 
 export function MainBoard() {
   const { ingredients, loading, error } = useIngredients();
+  const [sharedPosts, setSharedPosts] = useState<any[]>([]); // 공유 데이터 상태 추가
   const userName = localStorage.getItem("currentUserName") || "User";
 
-  const expiringSoonCount = ingredients.filter((ingredient) => {
-    const daysLeft = getDaysUntilExpiration(ingredient.expiration_date);
-    return daysLeft !== null && daysLeft >= 0 && daysLeft < 3;
-  }).length;
+  // Shared Board 데이터를 가져옵니다.
+  useEffect(() => {
+    const fetchShared = async () => {
+      try {
+        const data = await shareService.getAll();
+        setSharedPosts(data.slice(0, 2)); // 상위 2개만 표시
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchShared();
+  }, []);
+
+  // 가장 임박한 아이템 하나 찾기 (상단 배너용)
+  const urgentItem = [...ingredients]
+    .filter((i) => getDaysUntilExpiration(i.expiration_date) !== null)
+    .sort(
+      (a, b) =>
+        new Date(a.expiration_date).getTime() -
+        new Date(b.expiration_date).getTime(),
+    )[0];
+
+  const urgentDays = urgentItem
+    ? getDaysUntilExpiration(urgentItem.expiration_date)
+    : null;
 
   return (
-    <div className="min-h-screen bg-background pb-28">
-      {/* Header */}
-      <div className="bg-card px-6 py-4 border-b border-border shadow-sm">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src={logo} alt="FridgeFriend Logo" className="h-10 w-10" />
-
-            <h1 className="text-2xl">
-              Hello,{" "}
-              <Link
-                to="/profile"
-                className="text-[#1d7d5e] hover:underline underline-offset-4"
-              >
-                {userName}
-              </Link>
-              ! 👋
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="cursor-pointer rounded-full hover:bg-[#1d7d5e]/10"
-            >
-              <Bell className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="cursor-pointer rounded-full hover:bg-[#1d7d5e]/10"
-            >
-              <Settings className="h-5 w-5" />
-            </Button>
-          </div>
+    <div className="min-h-screen bg-[#f8fffd] pb-28">
+      {/* --- Header --- */}
+      <div className="bg-white px-6 py-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold">
+          Hello, <span className="text-[#56cc9d]">{userName}!</span> 👋
+        </h1>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="rounded-full">
+            <Bell className="h-5 w-5 text-slate-400" />
+          </Button>
+          <Button variant="ghost" size="icon" className="rounded-full">
+            <Settings className="h-5 w-5 text-slate-400" />
+          </Button>
         </div>
-
-        <p className="text-muted-foreground">
-          Manage your ingredients and reduce food waste
-        </p>
       </div>
 
-      {/* Main Content */}
-      <div className="space-y-6 p-6">
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-card rounded-2xl border border-border p-4 shadow-sm">
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-sm text-muted-foreground">
-                Total Ingredients
-              </h2>
-              <ChefHat className="h-5 w-5 text-[#1d7d5e]" />
+      <div className="space-y-6 px-6">
+        {/* --- 1. Expiring Soon Banner (Figma 스타일 알림창) --- */}
+        {urgentItem && (
+          <div className="bg-[#fff1f1] border border-red-50 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="bg-red-100 p-2 rounded-xl">
+                <Calendar className="h-5 w-5 text-red-500" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">
+                  Expiring Soon
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {urgentItem.name} expires in {urgentDays} days
+                </p>
+              </div>
             </div>
-            <p className="text-2xl font-semibold">{ingredients.length}</p>
+            <Badge className="bg-red-500 text-white rounded-full px-3 py-1 text-xs border-none">
+              D-{urgentDays}
+            </Badge>
           </div>
+        )}
 
-          <div className="bg-card rounded-2xl border border-border p-4 shadow-sm">
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-sm text-muted-foreground">Expiring Soon</h2>
-              <Calendar
-                className={`h-5 w-5 ${
-                  expiringSoonCount > 0 ? "text-red-500" : "text-[#1d7d5e]"
-                }`}
-              />
-            </div>
-            <p
-              className={`text-2xl font-semibold ${
-                expiringSoonCount > 0 ? "text-red-500" : ""
-              }`}
-            >
-              {expiringSoonCount}
-            </p>
-          </div>
-        </div>
-
-        {/* Recent Ingredients */}
-        <div className="bg-card rounded-2xl border border-border p-4 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Recent Ingredients</h2>
-
-            <Link to="/ingredients">
-              <Button
-                variant="outline"
-                size="sm"
-                className="cursor-pointer rounded-xl bg-white hover:border-[#1d7d5e] hover:text-[#1d7d5e]"
-              >
-                View All
-              </Button>
-            </Link>
-          </div>
-
-          {loading ? (
-            <p className="text-muted-foreground">Loading ingredients...</p>
-          ) : error ? (
-            <p className="text-destructive">{error}</p>
-          ) : ingredients.length === 0 ? (
-            <div className="py-8 text-center">
-              <p className="mb-4 text-muted-foreground">
-                No ingredients added yet
-              </p>
-
-              <Link to="/ingredients/new">
-                <Button className="cursor-pointer rounded-xl bg-[#1d7d5e] text-white hover:bg-[#17664c]">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Ingredient
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {ingredients.slice(0, 5).map((ingredient) => {
-                const expirationDate = ingredient.expiration_date;
-                const storeName = ingredient.store_name;
-                const daysLeft = getDaysUntilExpiration(expirationDate);
-                const ddayLabel = getDdayLabel(daysLeft);
-                const isUrgent = daysLeft !== null && daysLeft < 3;
-                const isExpired = daysLeft !== null && daysLeft < 0;
-
-                return (
-                  <Link
-                    key={ingredient._id || ingredient._id} // 🔴 id 대신 _id를 우선적으로 사용하도록 수정
-                    to={`/ingredients/${ingredient._id || ingredient._id}`} // 🔴 이동 경로도 맞춰줍니다
-                    className="block"
-                  >
-                    <div
-                      className={`flex items-center justify-between rounded-2xl border p-4 shadow-sm transition-all duration-200 hover:-translate-y-[1px] hover:shadow-md ${
-                        isUrgent
-                          ? "border-red-300 bg-red-50"
-                          : "border-border bg-white"
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p
-                            className={`font-medium ${
-                              isUrgent ? "text-red-700" : "text-foreground"
-                            }`}
-                          >
-                            {ingredient.name}
-                          </p>
-
-                          {isUrgent && (
-                            <AlertTriangle className="h-4 w-4 text-red-500" />
-                          )}
-                        </div>
-
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {storeName || "Unknown store"}
-                        </p>
-                      </div>
-
-                      <div className="space-y-1 text-right">
-                        {expirationDate && (
-                          <Badge
-                            variant="secondary"
-                            className={
-                              isExpired
-                                ? "bg-red-100 text-red-700"
-                                : isUrgent
-                                  ? "bg-red-100 text-red-700"
-                                  : "bg-[#1d7d5e]/10 text-[#1d7d5e]"
-                            }
-                          >
-                            {expirationDate}
-                          </Badge>
-                        )}
-
-                        {ddayLabel && (
-                          <p
-                            className={`text-xs font-semibold ${
-                              isExpired
-                                ? "text-red-600"
-                                : isUrgent
-                                  ? "text-red-600"
-                                  : "text-[#1d7d5e]"
-                            }`}
-                          >
-                            {ddayLabel}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Bottom Buttons */}
+        {/* --- 2. Quick Action Buttons (기존 하단 버튼을 Figma 스타일로 재배치) --- */}
         <div className="grid grid-cols-2 gap-4">
           <Link to="/ingredients/new">
-            <Button className="h-12 w-full cursor-pointer rounded-2xl bg-[#1d7d5e] text-white shadow-sm hover:bg-[#17664c] hover:shadow-md">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Ingredient
+            <Button className="h-14 w-full bg-[#e8f7f2] hover:bg-[#d1eee4] text-[#1d7d5e] rounded-2xl border-none shadow-none flex flex-col items-center justify-center gap-0">
+              <Plus className="h-5 w-5" />
+              <span className="text-[11px] font-bold">Add Item</span>
             </Button>
           </Link>
-
           <Link to="/recipes">
-            <Button
-              variant="outline"
-              className="h-12 w-full cursor-pointer rounded-2xl bg-white shadow-sm hover:border-[#1d7d5e] hover:text-[#1d7d5e] hover:shadow-md"
-            >
-              <Check className="mr-2 h-4 w-4" />
-              View Recipes
+            <Button className="h-14 w-full bg-[#e8f7f2] hover:bg-[#d1eee4] text-[#1d7d5e] rounded-2xl border-none shadow-none flex flex-col items-center justify-center gap-0">
+              <ChefHat className="h-5 w-5" />
+              <span className="text-[11px] font-bold">Recipe</span>
             </Button>
           </Link>
         </div>
+
+        {/* --- 3. My Ingredients (기존 Recent Ingredients 섹션 유지 및 다듬기) --- */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-slate-800">My Ingredients</h2>
+            <Link
+              to="/ingredients"
+              className="text-[#56cc9d] text-sm font-semibold"
+            >
+              View All
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {ingredients.slice(0, 5).map((ingredient) => {
+              const daysLeft = getDaysUntilExpiration(
+                ingredient.expiration_date,
+              );
+              return (
+                <Link
+                  key={ingredient._id}
+                  to={`/ingredients/${ingredient._id}`}
+                  className="block bg-white border border-slate-50 rounded-2xl p-4 shadow-sm flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-2xl">
+                      {/* 재료 아이콘 (추후 카테고리별 매핑 가능) */}
+                      🍎
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800">
+                        {ingredient.name}
+                      </h4>
+                      <p className="text-xs text-slate-400">
+                        Exp: {ingredient.expiration_date}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge
+                    className={
+                      daysLeft !== null && daysLeft < 3
+                        ? "bg-red-500 text-white border-none"
+                        : "bg-[#56cc9d] text-white border-none"
+                    }
+                  >
+                    {daysLeft !== null && daysLeft < 3
+                      ? `D-${daysLeft}`
+                      : "Fresh"}
+                  </Badge>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* --- 4. Shared Board (Figma에 새로 추가된 섹션) --- */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-slate-800">Shared Board</h2>
+            <Link to="/share" className="text-[#56cc9d] text-sm font-semibold">
+              View All
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {sharedPosts.length > 0 ? (
+              sharedPosts.map((post) => (
+                <div
+                  key={post._id}
+                  className="bg-white border border-slate-50 rounded-[32px] p-4 shadow-sm text-center"
+                >
+                  <div className="w-16 h-16 bg-slate-50 rounded-full mx-auto mb-3 flex items-center justify-center overflow-hidden">
+                    {post.photo_url ? (
+                      <img
+                        src={post.photo_url}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      "🎁"
+                    )}
+                  </div>
+                  <h4 className="font-bold text-slate-800 text-sm truncate">
+                    {post.ingredient_name}
+                  </h4>
+                  <Badge
+                    variant="secondary"
+                    className="bg-[#e8f7f2] text-[#1d7d5e] border-none my-2 px-3"
+                  >
+                    {post.pickup_type}
+                  </Badge>
+                  <p className="text-[10px] text-slate-400">
+                    From: {post.user_id?.fullName || "User"}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-muted-foreground col-span-2 text-center py-4">
+                No shared items yet.
+              </p>
+            )}
+          </div>
+        </section>
       </div>
 
       <BottomNav />
