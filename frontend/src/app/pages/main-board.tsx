@@ -1,71 +1,70 @@
 import { Link } from "react-router-dom";
-import {
-  Bell,
-  Settings,
-  Calendar,
-  ChefHat,
-  Plus,
-  Check,
-  AlertTriangle,
-} from "lucide-react";
+import { Bell, Settings, Calendar, ChefHat, Plus } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { useIngredients } from "../hooks";
-import logo from "../../assets/logo.png";
 import { BottomNav } from "../components/BottomNav";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react"; // useMemo 추가
 import { shareService } from "../services/shareService";
 
 function getDaysUntilExpiration(dateString?: string) {
   if (!dateString) return null;
-
   const today = new Date();
   const expiry = new Date(dateString);
-
   today.setHours(0, 0, 0, 0);
   expiry.setHours(0, 0, 0, 0);
-
   const diffTime = expiry.getTime() - today.getTime();
   return Math.floor(diffTime / (1000 * 60 * 60 * 24));
 }
 
-function getDdayLabel(daysLeft: number | null) {
-  if (daysLeft === null) return null;
-  if (daysLeft === 0) return "D-Day";
-  if (daysLeft > 0) return `D-${daysLeft}`;
-  return `Expired ${Math.abs(daysLeft)}d`;
-}
-
 export function MainBoard() {
-  const { ingredients, loading, error } = useIngredients();
-  const [sharedPosts, setSharedPosts] = useState<any[]>([]); // 공유 데이터 상태 추가
+  const { ingredients, loading, error, refresh } = useIngredients();
+  const [sharedPosts, setSharedPosts] = useState<any[]>([]);
   const userName = localStorage.getItem("currentUserName") || "User";
 
-  // Shared Board 데이터를 가져옵니다.
   useEffect(() => {
+    refresh();
+
     const fetchShared = async () => {
       try {
         const data = await shareService.getAll();
-        setSharedPosts(data.slice(0, 2)); // 상위 2개만 표시
+        setSharedPosts(data.slice(0, 2));
       } catch (e) {
         console.error(e);
       }
     };
     fetchShared();
-  }, []);
+  }, [refresh]);
 
-  // 가장 임박한 아이템 하나 찾기 (상단 배너용)
-  const urgentItem = [...ingredients]
-    .filter((i) => getDaysUntilExpiration(i.expiration_date) !== null)
-    .sort(
-      (a, b) =>
-        new Date(a.expiration_date).getTime() -
-        new Date(b.expiration_date).getTime(),
-    )[0];
+  // --- 1. 데이터가 없을 때를 대비한 안전한 정렬 로직 ---
+  const urgentItem = useMemo(() => {
+    if (!ingredients || ingredients.length === 0) return null;
+    return [...ingredients]
+      .filter((i) => i.expiration_date)
+      .sort(
+        (a, b) =>
+          new Date(a.expiration_date).getTime() -
+          new Date(b.expiration_date).getTime(),
+      )[0];
+  }, [ingredients]);
 
   const urgentDays = urgentItem
     ? getDaysUntilExpiration(urgentItem.expiration_date)
     : null;
+
+  // --- 2. 로딩 및 에러 상태 UI 처리 (데이터가 안 보일 때 원인 파악용) ---
+  // if (loading)
+  //   return (
+  //     <div className="min-h-screen flex items-center justify-center">
+  //       Loading...
+  //     </div>
+  //   );
+  if (error)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-red-500">
+        Error: {error}
+      </div>
+    );
 
   return (
     <div className="min-h-screen bg-[#f8fffd] pb-28">
@@ -85,7 +84,7 @@ export function MainBoard() {
       </div>
 
       <div className="space-y-6 px-6">
-        {/* --- 1. Expiring Soon Banner (Figma 스타일 알림창) --- */}
+        {/* --- 1. Expiring Soon Banner --- */}
         {urgentItem && (
           <div className="bg-[#fff1f1] border border-red-50 rounded-2xl p-4 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-3">
@@ -107,7 +106,7 @@ export function MainBoard() {
           </div>
         )}
 
-        {/* --- 2. Quick Action Buttons (기존 하단 버튼을 Figma 스타일로 재배치) --- */}
+        {/* --- 2. Quick Action Buttons --- */}
         <div className="grid grid-cols-2 gap-4">
           <Link to="/ingredients/new">
             <Button className="h-14 w-full bg-[#e8f7f2] hover:bg-[#d1eee4] text-[#1d7d5e] rounded-2xl border-none shadow-none flex flex-col items-center justify-center gap-0">
@@ -123,7 +122,7 @@ export function MainBoard() {
           </Link>
         </div>
 
-        {/* --- 3. My Ingredients (기존 Recent Ingredients 섹션 유지 및 다듬기) --- */}
+        {/* --- 3. My Ingredients 섹션 --- */}
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-slate-800">My Ingredients</h2>
@@ -135,44 +134,54 @@ export function MainBoard() {
             </Link>
           </div>
           <div className="space-y-3">
-            {ingredients.slice(0, 5).map((ingredient) => {
-              const daysLeft = getDaysUntilExpiration(
-                ingredient.expiration_date,
-              );
-              return (
-                <Link
-                  key={ingredient._id}
-                  to={`/ingredients/${ingredient._id}`}
-                  className="block bg-white border border-slate-50 rounded-2xl p-4 shadow-sm flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-2xl">
-                      {/* 재료 아이콘 (추후 카테고리별 매핑 가능) */}
-                      🍎
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-800">
-                        {ingredient.name}
-                      </h4>
-                      <p className="text-xs text-slate-400">
-                        Exp: {ingredient.expiration_date}
-                      </p>
-                    </div>
-                  </div>
-                  <Badge
-                    className={
-                      daysLeft !== null && daysLeft < 3
-                        ? "bg-red-500 text-white border-none"
-                        : "bg-[#56cc9d] text-white border-none"
-                    }
+            {/* 로딩 중일 때와 데이터가 있을 때를 구분해서 렌더링 */}
+            {ingredients && ingredients.length > 0 ? (
+              ingredients.slice(0, 5).map((ingredient) => {
+                const daysLeft = getDaysUntilExpiration(
+                  ingredient.expiration_date,
+                );
+                return (
+                  <Link
+                    key={ingredient._id}
+                    to={`/ingredients/${ingredient._id}`}
+                    className="block bg-white border border-slate-50 rounded-2xl p-4 shadow-sm flex items-center justify-between"
                   >
-                    {daysLeft !== null && daysLeft < 3
-                      ? `D-${daysLeft}`
-                      : "Fresh"}
-                  </Badge>
-                </Link>
-              );
-            })}
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-2xl">
+                        🍎
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-800">
+                          {ingredient.name}
+                        </h4>
+                        <p className="text-xs text-slate-400">
+                          Exp: {ingredient.expiration_date}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge
+                      className={
+                        daysLeft !== null && daysLeft < 3
+                          ? "bg-red-500"
+                          : "bg-[#56cc9d]"
+                      }
+                    >
+                      {daysLeft !== null && daysLeft < 3
+                        ? `D-${daysLeft}`
+                        : "Fresh"}
+                    </Badge>
+                  </Link>
+                );
+              })
+            ) : loading ? (
+              <p className="text-center py-10 text-slate-400 text-sm">
+                Loading fridge...
+              </p>
+            ) : (
+              <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-200">
+                <p className="text-slate-400 text-sm">No ingredients found.</p>
+              </div>
+            )}
           </div>
         </section>
 

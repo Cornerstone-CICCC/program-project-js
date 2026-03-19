@@ -9,4 +9,5 @@ export interface Ingredient {
   expiration_date: string; // 백엔드 기준 (Date string)
   is_shared: boolean; // 나눔 여부
   created_at?: string; // 생성 시간
+  photo_url?: string;
 }

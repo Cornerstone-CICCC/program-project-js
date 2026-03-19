@@ -14,6 +14,7 @@ const ingredientSchema = new mongoose.Schema(
     purchased_date: { type: Date, required: true },
     expiration_date: { type: Date, required: true },
     is_shared: { type: Boolean, default: false },
+    photo_url: { type: String }, // 👈 이 줄을 추가하세요!
   },
   {
     timestamps: { createdAt: "created_at" },

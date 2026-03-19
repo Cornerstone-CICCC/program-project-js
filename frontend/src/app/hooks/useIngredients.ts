@@ -12,14 +12,15 @@ type IngredientApiItem = {
   purchased_date?: string;
   expiration_date?: string;
   is_shared?: boolean;
+  photo_url?: string;
 };
 
 type ApiErrorResponse = {
   message?: string;
 };
 
-type CreateIngredientInput = Omit<Ingredient, "_id" | "user_id">;
-type UpdateIngredientInput = Partial<Omit<Ingredient, "_id" | "user_id">>;
+type CreateIngredientInput = Omit<Ingredient, "_id">; // "_id"만 제외하고 "user_id"는 포함
+type UpdateIngredientInput = Partial<Omit<Ingredient, "_id">>; // 위와 동일하게 수정
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "";
@@ -75,28 +76,24 @@ function getCategoryImage(category?: string) {
 }
 
 function mapApiIngredient(item: IngredientApiItem): Ingredient {
-  const expiration_date = item.expiration_date
-    ? new Date(item.expiration_date).toISOString().slice(0, 10)
-    : "";
-
-  const purchased_date = item.purchased_date
-    ? new Date(item.purchased_date).toISOString().slice(0, 10)
-    : "";
-
-  // UI 계산용 (필요 시)
-  // const daysLeft = getDaysLeft(expiration_date);
+  // 날짜가 없거나 잘못되었을 때를 대비한 안전한 변환기
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    // 날짜 계산이 불가능한 경우(NaN) 빈 값 반환
+    return isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+  };
 
   return {
-    // 🔴 중요: 인터페이스 필드명과 1:1 매칭
-    _id: item._id || item.id || "",
+    _id: item._id || item.id || String(Math.random()),
     user_id: item.user_id || "",
-    name: item.name,
+    name: item.name || "Unknown Item", // 이름이 없으면 목록이 안 보일 수 있음
     category: item.category || "Others",
-    price: item.price,
-    store_name: item.store_name || "My Fridge",
-    purchased_date: purchased_date,
-    expiration_date: expiration_date,
+    purchased_date: formatDate(item.purchased_date), // 안전하게 변환
+    expiration_date: formatDate(item.expiration_date), // 안전하게 변환
     is_shared: Boolean(item.is_shared),
+    photo_url: item.photo_url || "",
+    store_name: item.store_name || "My Fridge",
   };
 }
 
@@ -174,9 +171,11 @@ export function useIngredients() {
         name: input.name,
         category: input.category,
         price: input.price,
-        store_name: input.store_name, // 🔴 storeName -> store_name
-        purchased_date: input.purchased_date, // 🔴 buyDate -> purchased_date
-        expiration_date: input.expiration_date, // 🔴 expirationDate -> expiration_date
+        store_name: input.store_name,
+        purchased_date: input.purchased_date,
+        expiration_date: input.expiration_date,
+        is_shared: input.is_shared, // 추가
+        user_id: input.user_id, // 🔴 이 줄을 추가해서 서버로 전달하세요!
       }),
     });
 
