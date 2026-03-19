@@ -9,7 +9,12 @@ import { shareService } from "../services/shareService"; // 서비스 임포트
 
 export function ShareBoard() {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<"all" | "free" | "pickup">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "free" | "pickup">(
+    "all",
+  );
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "available" | "completed"
+  >("available");
 
   // --- 1. 상태 관리 추가 ---
   const [items, setItems] = useState<any[]>([]); // 서버에서 받아올 아이템들
@@ -31,11 +36,16 @@ export function ShareBoard() {
     fetchSharedPosts();
   }, []);
 
-  // --- 3. 필터링 로직 (status는 이제 백엔드 필드인 pickup_type과 매칭) ---
   const filteredItems = items.filter((item) => {
-    if (filter === "all") return true;
-    // 백엔드 pickup_type: "Free" 또는 "Pickup" (대소문자 주의)
-    return item.pickup_type?.toLowerCase() === filter;
+    // 나눔 방식 필터 (Free / Pickup)
+    const matchesType =
+      typeFilter === "all" || item.pickup_type?.toLowerCase() === typeFilter;
+
+    // 나눔 상태 필터 (Available / Completed)
+    const matchesStatus =
+      statusFilter === "all" || item.status === statusFilter;
+
+    return matchesType && matchesStatus;
   });
 
   return (
@@ -67,42 +77,50 @@ export function ShareBoard() {
       </div>
 
       <div className="px-6 py-4">
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-3 mb-6 overflow-x-auto pb-2">
+        {/* Filter Tabs Container */}
+        <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+          {/* 🟢 1. 상태 필터 (Available / Completed) - 토글 버튼 스타일 */}
           <Button
-            variant={filter === "all" ? "default" : "outline"}
             size="sm"
-            onClick={() => setFilter("all")}
-            className={`rounded-full ${
-              filter === "all" ? "bg-primary text-white" : ""
+            variant="outline"
+            onClick={() =>
+              setStatusFilter(statusFilter === "all" ? "available" : "all")
+            }
+            className={`rounded-full px-4 border-none transition-all ${
+              statusFilter === "all"
+                ? "bg-amber-100 text-amber-700 font-bold"
+                : "bg-gray-100 text-gray-500"
             }`}
           >
-            Available
+            {statusFilter === "all" ? "Showing All" : "Hide Done"}
           </Button>
-
+          <div className="w-[1px] h-4 bg-gray-300 mx-1" /> {/* 구분선 */}
+          {/* 🟢 2. 방식 필터 (All / Free / Pickup) - 기존 setFilter 오류 수정 */}
+          {[
+            { id: "all", label: "Any Type" },
+            { id: "free", label: "Free" },
+            { id: "pickup", label: "Pickup" },
+          ].map((tab) => (
+            <Button
+              key={tab.id}
+              size="sm"
+              variant="outline"
+              // 🔴 여기서 setFilter 대신 setTypeFilter를 사용해야 합니다!
+              onClick={() => setTypeFilter(tab.id as any)}
+              className={`rounded-full px-5 py-1.5 transition-all duration-200 border-none ${
+                typeFilter === tab.id
+                  ? "bg-[#1d7d5e] text-white shadow-md hover:bg-[#17664c]"
+                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+              }`}
+            >
+              {tab.label}
+            </Button>
+          ))}
           <Button
-            variant={filter === "free" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter("free")}
-            className={`rounded-full ${
-              filter === "free" ? "bg-primary text-white" : ""
-            }`}
+            variant="outline"
+            size="icon"
+            className="rounded-full ml-auto w-9 h-9 flex items-center justify-center border-gray-200 text-gray-500"
           >
-            Free
-          </Button>
-
-          <Button
-            variant={filter === "pickup" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter("pickup")}
-            className={`rounded-full ${
-              filter === "pickup" ? "bg-accent text-white" : ""
-            }`}
-          >
-            Pickup
-          </Button>
-
-          <Button variant="outline" size="sm" className="rounded-full ml-auto">
             <Filter className="w-4 h-4" />
           </Button>
         </div>
