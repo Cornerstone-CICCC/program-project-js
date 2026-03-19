@@ -14,6 +14,7 @@ import { Notifications } from "./app/pages/notifications";
 import { RecipeGenerator } from "./app/pages/recipe-generator";
 import { AddShare } from "./app/pages/add-share";
 import { ShareDetail } from "./app/pages/ShareDetail";
+import { EditShare } from "./app/pages/EditShare";
 
 export default function App() {
   return (
@@ -29,7 +30,7 @@ export default function App() {
       <Route path="/share" element={<ShareBoard />} />
       <Route path="/share/add" element={<AddShare />} /> {/* 🟢 추가 */}
       <Route path="/share/:id" element={<ShareDetail />} />
-      {/* <Route path="/share/:id/edit" element={<ShareEdit />} /> */}
+      <Route path="/share/:id/edit" element={<EditShare />} />
       <Route path="/chat" element={<Chat />} />
       <Route path="/notifications" element={<Notifications />} />
       <Route path="/recipes" element={<RecipeGenerator />} />

@@ -184,7 +184,17 @@ export function ShareBoard() {
                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-1">
                       <span>👤</span>
                       <span className="truncate">
-                        From: {item.user_id?.name || "Unknown"}
+                        From:{" "}
+                        {
+                          // 1. fullName이 있는 경우 (객체인 경우)
+                          item.user_id?.fullName ||
+                            // 2. firstName과 lastName이 따로 있는 경우
+                            (item.user_id?.firstName && item.user_id?.lastName
+                              ? `${item.user_id.firstName} ${item.user_id.lastName}`
+                              : typeof item.user_id === "string"
+                                ? "Loading..."
+                                : "User")
+                        }
                       </span>
                     </div>
                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground">

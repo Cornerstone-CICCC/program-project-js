@@ -1,44 +1,25 @@
-import axios from "axios"; // 1. axios 임포트 확인
+import axios from "axios";
 
-// 2. 백엔드 주소 설정 (기존에 쓰던 주소로 확인하세요)
-const API_URL = "http://localhost:4000/api/shared-posts";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const SHARE_API_URL = `${API_URL}/shared-posts`;
 
 export const shareService = {
-  // 전체 가져오기
+  // 1. 전체 목록 가져오기
   getAll: async () => {
-    const response = await axios.get(API_URL);
+    const response = await axios.get(SHARE_API_URL);
     return response.data;
   },
 
-  // 상세 가져오기
+  // 2. 상세 정보 가져오기
   getById: async (id: string) => {
-    const response = await axios.get(`${API_URL}/${id}`);
+    const response = await axios.get(`${SHARE_API_URL}/${id}`);
     return response.data;
   },
 
-  // 🟢 401 에러와 'api' 미정의 문제를 해결한 create 함수
+  // 3. 게시글 생성
   create: async (formData: FormData): Promise<any> => {
     const token = localStorage.getItem("token");
-
-    // api 대신 axios를 직접 사용하거나,
-    // 기존에 선언된 인스턴스 이름으로 바꿔주세요.
-    const response = await axios.post(
-      "http://localhost:4000/api/shared-posts",
-      formData,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data", // 👈 이 헤더가 중요합니다.
-        },
-      },
-    );
-    return response.data;
-  },
-
-  // 수정하기
-  update: async (id: string, formData: FormData) => {
-    const token = localStorage.getItem("token");
-    const response = await axios.put(`${API_URL}/${id}`, formData, {
+    const response = await axios.post(SHARE_API_URL, formData, {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "multipart/form-data",
@@ -47,19 +28,51 @@ export const shareService = {
     return response.data;
   },
 
-  // shareService.ts 에 추가
+  // 4. 게시글 수정
+  update: async (id: string, formData: FormData) => {
+    const token = localStorage.getItem("token");
+    const response = await axios.put(`${SHARE_API_URL}/${id}`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  },
+
+  // 5. 게시글 삭제
+  delete: async (id: string): Promise<any> => {
+    const token = localStorage.getItem("token");
+    const response = await axios.delete(`${SHARE_API_URL}/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data;
+  },
+
+  // 6. 상태 변경
   updateStatus: async (
     id: string,
     status: "available" | "completed" | "canceled",
   ): Promise<any> => {
     const token = localStorage.getItem("token");
-    // PATCH 또는 PUT (백엔드 라우트 설정에 맞춤, 여기선 PATCH 권장)
     const response = await axios.patch(
-      `http://localhost:4000/api/shared-posts/${id}`,
+      `${SHARE_API_URL}/${id}`, // 👈 여기에 있던 /status를 삭제했습니다!
       { status },
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    return response.data;
+  },
+
+  // 7. 댓글 추가 (Axios로 통일 및 경로 수정)
+  addComment: async (id: string, data: { content: string }) => {
+    const token = localStorage.getItem("token");
+    const response = await axios.post(
+      `${SHARE_API_URL}/${id}/comments`, // ✅ /share 대신 /shared-posts 경로 사용
+      data,
       {
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
       },
     );
