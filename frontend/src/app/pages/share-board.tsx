@@ -16,6 +16,8 @@ export function ShareBoard() {
     "all" | "available" | "completed"
   >("available");
 
+  const [searchQuery, setSearchQuery] = useState("");
+
   // --- 1. 상태 관리 추가 ---
   const [items, setItems] = useState<any[]>([]); // 서버에서 받아올 아이템들
   const [loading, setLoading] = useState(true);
@@ -37,15 +39,20 @@ export function ShareBoard() {
   }, []);
 
   const filteredItems = items.filter((item) => {
-    // 나눔 방식 필터 (Free / Pickup)
+    // 1. 나눔 방식 필터 (Free / Pickup)
     const matchesType =
       typeFilter === "all" || item.pickup_type?.toLowerCase() === typeFilter;
 
-    // 나눔 상태 필터 (Available / Completed)
+    // 2. 나눔 상태 필터 (Available / Completed)
     const matchesStatus =
       statusFilter === "all" || item.status === statusFilter;
 
-    return matchesType && matchesStatus;
+    // 3. 🟢 검색어 필터 (제목에 검색어가 포함되어 있는지 확인)
+    const matchesSearch = item.ingredient_name
+      ?.toLowerCase()
+      .includes(searchQuery.toLowerCase());
+
+    return matchesType && matchesStatus && matchesSearch; // 🟢 세 조건 모두 만족
   });
 
   return (
@@ -71,7 +78,9 @@ export function ShareBoard() {
           <Input
             type="search"
             placeholder="Search ingredients..."
-            className="w-full pl-12 pr-4 py-3 bg-input-background rounded-xl border-0"
+            value={searchQuery} // 🟢 연결
+            onChange={(e) => setSearchQuery(e.target.value)} // 🟢 입력 시 상태 업데이트
+            className="w-full pl-12 pr-4 py-3 bg-input-background rounded-xl border-0 focus:ring-2 focus:ring-[#1d7d5e]"
           />
         </div>
       </div>
