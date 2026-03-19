@@ -78,7 +78,6 @@ export function AddIngredient() {
     const trimmedName = itemName.trim();
     if (!trimmedName) return alert("Please enter an item name.");
     if (!user?._id) return alert("Please log in first.");
-
     try {
       setIsSaving(true);
       let imageUrl = "";
@@ -178,15 +177,23 @@ export function AddIngredient() {
             />
           </div>
 
-          <div>
-            <Label htmlFor="category" className="mb-2 block text-sm">
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold text-slate-600 ml-1">
               Category
             </Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="w-full rounded-xl border border-transparent bg-input-background px-4">
-                <SelectValue />
+            <Select
+              value={category}
+              onValueChange={setCategory} // 상태 업데이트 연결 확인
+            >
+              <SelectTrigger className="w-full rounded-2xl border-none bg-white px-4 py-7 shadow-sm">
+                {/* 4. SelectValue에 현재 상태가 표시되도록 함 */}
+                <SelectValue>
+                  {category
+                    ? category.charAt(0).toUpperCase() + category.slice(1)
+                    : "Select Category"}
+                </SelectValue>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="rounded-2xl border-none shadow-xl">
                 <SelectItem value="vegetable">🥬 Vegetable</SelectItem>
                 <SelectItem value="fruit">🍎 Fruit</SelectItem>
                 <SelectItem value="dairy">🥛 Dairy</SelectItem>
@@ -198,8 +205,8 @@ export function AddIngredient() {
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+          <div className="flex gap-4">
+            <div className="flex-1 space-y-2">
               <Label htmlFor="buyDate" className="mb-2 block text-sm">
                 Buy Date
               </Label>
@@ -208,28 +215,27 @@ export function AddIngredient() {
                 type="date"
                 value={buyDate}
                 onChange={(e) => setBuyDate(e.target.value)}
-                className={fieldClassName}
+                className="w-full rounded-2xl border-none bg-white px-3 py-6 shadow-sm text-sm"
               />
             </div>
 
-            <div>
-              <Label
-                htmlFor="expiryDate"
-                className="mb-2 flex items-center gap-2 text-sm"
-              >
-                Expiration Date
-                <span className="rounded-full bg-[#1d7d5e]/10 px-2 py-0.5 text-xs text-[#1d7d5e]">
+            <div className="flex-1 space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <Label className="text-sm font-semibold text-slate-600">
+                  Expiration
+                </Label>
+                <span className="text-[10px] font-bold bg-red-50 text-red-400 px-1.5 py-0.5 rounded-md">
                   {ddayLabel}
                 </span>
-              </Label>
-              <Input
-                id="expiryDate"
-                type="date"
-                value={expiryDate}
-                min={today}
-                onChange={(e) => setExpiryDate(e.target.value)}
-                className={fieldClassName}
-              />
+              </div>
+              <div className="relative">
+                <Input
+                  type="date"
+                  value={expiryDate}
+                  onChange={(e) => setExpiryDate(e.target.value)}
+                  className="w-full rounded-2xl border-none bg-white px-3 py-6 shadow-sm text-sm"
+                />
+              </div>
             </div>
           </div>
 

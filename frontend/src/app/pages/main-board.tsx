@@ -22,6 +22,28 @@ export function MainBoard() {
   const [sharedPosts, setSharedPosts] = useState<any[]>([]);
   const userName = localStorage.getItem("currentUserName") || "User";
 
+  const categoryIcons: Record<string, string> = {
+    vegetable: "🥬",
+    fruit: "🍎",
+    dairy: "🥛",
+    meat: "🍖",
+    seafood: "🐟",
+    grain: "🌾",
+    other: "📦",
+    others: "📦", // 👈 'Others' 대응
+    general: "📦", // 👈 콘솔에 찍히는 'General' 대응
+  };
+
+  const getCategoryIcon = (category: string) => {
+    if (!category) return "📦";
+
+    // 소문자로 바꾸고 공백 제거 (예: "General " -> "general")
+    const cleanCategory = category.toLowerCase().trim();
+
+    // 매핑 테이블에서 찾고, 없으면 기본값으로 상자(📦) 아이콘 반환
+    return categoryIcons[cleanCategory] || "📦";
+  };
+
   useEffect(() => {
     refresh();
 
@@ -140,6 +162,10 @@ export function MainBoard() {
                 const daysLeft = getDaysUntilExpiration(
                   ingredient.expiration_date,
                 );
+
+                const icon = getCategoryIcon(ingredient.category);
+                console.log("아이콘 찾는 중 -> 카테고리:", ingredient.category);
+
                 return (
                   <Link
                     key={ingredient._id}
@@ -147,8 +173,8 @@ export function MainBoard() {
                     className="block bg-white border border-slate-50 rounded-2xl p-4 shadow-sm flex items-center justify-between"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-2xl">
-                        🍎
+                      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm">
+                        {icon}
                       </div>
                       <div>
                         <h4 className="font-bold text-slate-800">

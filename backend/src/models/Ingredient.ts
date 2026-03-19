@@ -8,7 +8,7 @@ const ingredientSchema = new mongoose.Schema(
       required: true,
     },
     name: { type: String, required: true },
-    category: { type: String, default: "Others" }, // 👈 추가: 자동 분류 카테고리
+    category: { type: String, default: "other" }, // 👈 추가: 자동 분류 카테고리
     price: { type: Number },
     store_name: { type: String },
     purchased_date: { type: Date, required: true },

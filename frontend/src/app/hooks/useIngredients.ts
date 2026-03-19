@@ -87,10 +87,11 @@ function mapApiIngredient(item: IngredientApiItem): Ingredient {
   return {
     _id: item._id || item.id || String(Math.random()),
     user_id: item.user_id || "",
-    name: item.name || "Unknown Item", // 이름이 없으면 목록이 안 보일 수 있음
-    category: item.category || "Others",
-    purchased_date: formatDate(item.purchased_date), // 안전하게 변환
-    expiration_date: formatDate(item.expiration_date), // 안전하게 변환
+    name: item.name || "Unknown Item",
+    // item.category가 있으면 쓰고, 없으면 'other'를 기본값으로 합니다.
+    category: item.category || "other",
+    purchased_date: formatDate(item.purchased_date),
+    expiration_date: formatDate(item.expiration_date),
     is_shared: Boolean(item.is_shared),
     photo_url: item.photo_url || "",
     store_name: item.store_name || "My Fridge",

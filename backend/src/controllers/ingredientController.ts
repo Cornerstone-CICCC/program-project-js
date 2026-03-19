@@ -2,9 +2,13 @@ import { Request, Response } from "express";
 import { Ingredient } from "../models/Ingredient";
 import { SharedPost } from "../models/SharedPost";
 
+/**
+ * Helper: Auto-categorize based on keywords.
+ * Returns lowercase strings to match Frontend mapping keys.
+ */
 const autoCategorize = (name: string): string => {
   const map: { [key: string]: string[] } = {
-    Meat: [
+    meat: [
       "소",
       "돼지",
       "닭",
@@ -15,7 +19,7 @@ const autoCategorize = (name: string): string => {
       "삼겹살",
       "스테이크",
     ],
-    Seafood: [
+    seafood: [
       "연어",
       "새우",
       "생선",
@@ -24,8 +28,9 @@ const autoCategorize = (name: string): string => {
       "salmon",
       "shrimp",
       "fish",
+      "squid",
     ],
-    Vegetable: [
+    vegetable: [
       "양파",
       "당근",
       "마늘",
@@ -34,22 +39,43 @@ const autoCategorize = (name: string): string => {
       "onion",
       "garlic",
       "carrot",
+      "potato",
     ],
-    Dairy: ["우유", "치즈", "버터", "요거트", "milk", "cheese", "butter"],
-    Fruit: ["사과", "바나나", "포도", "딸기", "apple", "banana", "berry"],
+    dairy: [
+      "우유",
+      "치즈",
+      "버터",
+      "요거트",
+      "milk",
+      "cheese",
+      "butter",
+      "yogurt",
+    ],
+    fruit: [
+      "사과",
+      "바나나",
+      "포도",
+      "딸기",
+      "apple",
+      "banana",
+      "berry",
+      "grape",
+    ],
+    grain: ["쌀", "밀가루", "콩", "rice", "grain", "flour", "bean"],
   };
 
+  const lowerName = name.toLowerCase();
   for (const [cat, keywords] of Object.entries(map)) {
-    if (keywords.some((k) => name.toLowerCase().includes(k))) return cat;
+    if (keywords.some((k) => lowerName.includes(k))) return cat;
   }
-  return "General"; // 매칭되지 않을 경우 기본값
+  return "other"; // Default to 'other' (lowercase) if no match
 };
 
 // @desc    Get my ingredient list
 export const getIngredients = async (req: any, res: Response) => {
   try {
     const ingredients = await Ingredient.find({ user_id: req.user.id }).sort({
-      expiration_date: 1, // 유통기한이 임박한 순서대로 정렬하는 것이 더 전략적입니다.
+      expiration_date: 1, // Sort by closest expiration date
     });
     res.status(200).json(ingredients);
   } catch (error) {
@@ -57,10 +83,7 @@ export const getIngredients = async (req: any, res: Response) => {
   }
 };
 
-/**
- * [추가] 유통기한 임박 알림 조회 (오늘 기준 3일 이내)
- * @route GET /api/ingredients/alerts
- */
+// @desc    Get expiry alerts (within 3 days)
 export const getExpiryAlerts = async (req: any, res: Response) => {
   try {
     const today = new Date();
@@ -70,8 +93,8 @@ export const getExpiryAlerts = async (req: any, res: Response) => {
     const alerts = await Ingredient.find({
       user_id: req.user.id,
       expiration_date: {
-        $gte: today, // 오늘부터
-        $lte: threeDaysLater, // 3일 후까지
+        $gte: today,
+        $lte: threeDaysLater,
       },
     }).sort({ expiration_date: 1 });
 
@@ -81,11 +104,18 @@ export const getExpiryAlerts = async (req: any, res: Response) => {
   }
 };
 
-// @desc    Add a new ingredient (with Auto-Categorization)
+// @desc    Add a new ingredient
 export const createIngredient = async (req: any, res: Response) => {
   try {
-    const { name, price, store_name, purchased_date, expiration_date } =
-      req.body;
+    const {
+      name,
+      category: selectedCategory, // Category sent from Frontend
+      price,
+      store_name,
+      purchased_date,
+      expiration_date,
+      photo_url,
+    } = req.body;
 
     if (!name || !purchased_date || !expiration_date) {
       return res.status(400).json({
@@ -93,18 +123,20 @@ export const createIngredient = async (req: any, res: Response) => {
       });
     }
 
-    // [핵심] 저장 시 자동으로 카테고리 할당
-    const category = autoCategorize(name);
+    // PRIORITY: Use selectedCategory if provided, otherwise use autoCategorize
+    const finalCategory = selectedCategory || autoCategorize(name);
 
     const newIngredient = await Ingredient.create({
       user_id: req.user.id,
       name,
-      category, // 고도화 필드
+      category: finalCategory,
       price: price || 0,
-      store_name,
+      store_name: store_name || "My Fridge",
       purchased_date,
       expiration_date,
+      photo_url,
     });
+
     res.status(201).json(newIngredient);
   } catch (error: any) {
     console.error("Create Error:", error.message);
@@ -117,11 +149,13 @@ export const createIngredient = async (req: any, res: Response) => {
 // @desc    Update an ingredient
 export const updateIngredient = async (req: Request, res: Response) => {
   try {
-    // req.body에 purchased_date가 포함되어도 findByIdAndUpdate가 알아서 처리합니다.
+    // If the user updates the name but not the category,
+    // you might want to re-run autoCategorize here,
+    // but usually, it's safer to trust req.body sent from the edit form.
     const updated = await Ingredient.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true, runValidators: true }, // runValidators를 추가해야 수정 시에도 모델 제약조건을 체크합니다.
+      { new: true, runValidators: true },
     );
 
     if (!updated) {
@@ -149,32 +183,27 @@ export const deleteIngredient = async (req: Request, res: Response) => {
   }
 };
 
-// @desc    Update post status (e.g., mark as completed)
-// @route   PATCH /api/shared-posts/:id
+// @desc    Update post status
 export const updatePostStatus = async (req: any, res: Response) => {
   try {
     const { status } = req.body;
-
-    // 1. 유효한 상태 값인지 확인 (available, completed, canceled)
     const validStatuses = ["available", "completed", "canceled"];
+
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: "Invalid status value." });
     }
 
-    // 2. 게시글 찾기
     const post = await SharedPost.findById(req.params.id);
     if (!post) {
       return res.status(404).json({ message: "Post not found." });
     }
 
-    // 3. 작성자 본인 확인 (내 글만 내가 완료할 수 있음)
     if (post.user_id.toString() !== req.user.id) {
       return res
         .status(403)
         .json({ message: "Not authorized to update this post." });
     }
 
-    // 4. 상태 업데이트
     post.status = status;
     await post.save();
 
