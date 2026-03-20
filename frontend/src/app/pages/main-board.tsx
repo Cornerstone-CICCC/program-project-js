@@ -164,7 +164,6 @@ export function MainBoard() {
                 );
 
                 const icon = getCategoryIcon(ingredient.category);
-                console.log("아이콘 찾는 중 -> 카테고리:", ingredient.category);
 
                 return (
                   <Link
