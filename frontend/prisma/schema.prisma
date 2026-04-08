@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// 1. 사용자 정보
+model User {
+  id               String         @id @default(auto()) @map("_id") @db.ObjectId
+  email            String         @unique
+  passwordHash     String
+  name             String
+  avatar           String?
+  level            Int            @default(1)
+  rating           Float          @default(0.0)
+  location         String?        // 자취방 위치 (예: B동 302호)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  ingredients      Ingredient[]
+  sharedItems      SharedItem[]   @relation("ItemOwner")
+  claimedItems     SharedItem[]   @relation("ItemClaimer")
+  sentMessages     Message[]
+  notifications    Notification[]
+  recipes          Recipe[]
+  favorites        Favorite[]
+  
+  // 채팅방 참여 관계
+  chatAsUser1      Chat[]         @relation("ChatUser1")
+  chatAsUser2      Chat[]         @relation("ChatUser2")
+}
+
+// 2. 냉장고 식재료
+model Ingredient {
+id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String?  @db.ObjectId // 👈 String 뒤에 ? 추가
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade) // 👈 User 뒤에 ? 추가
+  name        String
+  emoji       String?  @default("📦")
+  quantity    Float    @default(1)
+  unit        String?  // g, ml, 개...
+  category    String   // vegetable, fruit, meat 등
+  location    String   @default("fridge") // fridge, freezer, pantry
+  expiryDate  DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([expiryDate])
+}
+
+// 3. 식재료 나눔 게시글
+model SharedItem {
+  id                 String     @id @default(auto()) @map("_id") @db.ObjectId
+  userId             String     @db.ObjectId
+  owner              User       @relation("ItemOwner", fields: [userId], references: [id])
+  name               String
+  description        String?
+  imageUrl           String?
+  category           String
+  status             String     @default("free") // free, pickup
+  availabilityStatus String     @default("available") // available, claimed, completed
+  expiryDate         DateTime
+  
+  // 📍 추가된 필드들
+  quantity           Int?
+  lat                Float?     // 거리 계산용
+  lng                Float?     // 거리 계산용
+  
+  createdAt          DateTime   @default(now())
+  
+  claimedByUserId    String?    @db.ObjectId
+  claimer            User?      @relation("ItemClaimer", fields: [claimedByUserId], references: [id])
+  
+  chats              Chat[]
+  favorites          Favorite[]
+
+  @@index([userId])
+  @@index([availabilityStatus])
+}
+
+// 4. 채팅방
+model Chat {
+  id             String      @id @default(auto()) @map("_id") @db.ObjectId
+  user1Id        String      @db.ObjectId
+  user1          User        @relation("ChatUser1", fields: [user1Id], references: [id])
+  user2Id        String      @db.ObjectId
+  user2          User        @relation("ChatUser2", fields: [user2Id], references: [id])
+  sharedItemId   String?     @db.ObjectId
+  sharedItem     SharedItem? @relation(fields: [sharedItemId], references: [id])
+  
+  messages       Message[]
+  lastMessage    String?
+  updatedAt      DateTime    @updatedAt
+
+  @@index([user1Id, user2Id])
+}
+
+// 5. 채팅 메시지
+model Message {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  chatId    String   @db.ObjectId
+  chat      Chat     @relation(fields: [chatId], references: [id])
+  senderId  String   @db.ObjectId
+  sender    User     @relation(fields: [senderId], references: [id])
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// 6. AI 레시피
+model Recipe {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String   @db.ObjectId
+  user         User     @relation(fields: [userId], references: [id])
+  name         String
+  description  String?
+  ingredients  String[] // ["계란", "토마토"]
+  instructions String[] // ["계란을 푼다", "토마토를 볶는다"]
+  createdAt    DateTime @default(now())
+}
+
+// 7. 알림
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // expiry, chat, share
+  title     String
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// 8. 즐겨찾기 (나눔글 저장)
+model Favorite {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String     @db.ObjectId
+  user         User       @relation(fields: [userId], references: [id])
+  sharedItemId String     @db.ObjectId
+  sharedItem   SharedItem @relation(fields: [sharedItemId], references: [id])
+}
