@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 
-// Prisma 클라이언트 인스턴스 생성
 const prisma = new PrismaClient();
 
-// 1. 데이터 조회 (GET)
+// 1. 목록 조회 (GET) - 현재 에러가 발생하는 지점
 export async function GET() {
   try {
     const items = await prisma.sharedItem.findMany({
@@ -12,6 +11,7 @@ export async function GET() {
         id: true,
         name: true,
         status: true,
+        // ✅ 모델에 맞춰 Int로 처리 (String?일 경우에도 문제 없음)
         quantity: true,
         description: true,
         expiryDate: true,
@@ -35,9 +35,9 @@ export async function GET() {
 
     return NextResponse.json(items);
   } catch (error) {
-    console.error("❌ API GET Error:", error);
+    console.error("❌ API GET Error (List):", error);
     return NextResponse.json(
-      { error: "데이터를 가져오는데 실패했습니다." },
+      { error: "데이터 목록을 가져오는데 실패했습니다." },
       { status: 500 },
     );
   }
@@ -51,10 +51,9 @@ export async function POST(request: Request) {
     const newItem = await prisma.sharedItem.create({
       data: {
         name: body.name,
-        // ✅ 해결: category가 없으면 기본값 "Food" 또는 body에서 받은 값 사용
-        category: body.category || "Etc",
+        category: body.category || "Food",
         status: body.status || "free",
-        // DB 모델이 String? 이므로 문자열로 변환
+        // ✅ 프론트에서 넘어온 값을 숫자로 변환 (모델이 Int일 경우 필수)
         quantity: body.quantity ? Number(body.quantity) : 1,
         description: body.description || "",
         expiryDate: body.expiryDate ? new Date(body.expiryDate) : new Date(),
@@ -70,8 +69,8 @@ export async function POST(request: Request) {
     console.error("❌ API POST Error:", error);
     return NextResponse.json(
       {
-        error: "아이템 등록에 실패했습니다.",
-        details: error instanceof Error ? error.message : String(error),
+        error: "등록 실패",
+        details: error instanceof Error ? error.message : "Internal Error",
       },
       { status: 500 },
     );
