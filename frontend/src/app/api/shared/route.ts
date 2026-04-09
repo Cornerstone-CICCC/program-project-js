@@ -53,13 +53,13 @@ export async function POST(request: Request) {
         name: body.name,
         category: body.category || "Food",
         status: body.status || "free",
-        // ✅ 프론트에서 넘어온 값을 숫자로 변환 (모델이 Int일 경우 필수)
         quantity: body.quantity ? Number(body.quantity) : 1,
         description: body.description || "",
         expiryDate: body.expiryDate ? new Date(body.expiryDate) : new Date(),
         lat: parseFloat(body.lat) || 49.2827,
         lng: parseFloat(body.lng) || -123.1207,
         userId: body.userId,
+        imageUrl: body.imageUrl,
         availabilityStatus: "available",
       },
     });

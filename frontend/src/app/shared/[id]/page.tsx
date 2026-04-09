@@ -136,20 +136,27 @@ export default function SharedDetailPage({
         style={{
           width: "100%",
           height: "300px",
-          backgroundColor: "#f9fafb",
           borderRadius: "24px",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          fontSize: "100px",
-          marginBottom: "30px",
+          overflow: "hidden",
         }}
       >
-        {item.name?.toLowerCase().includes("apple")
-          ? "🍎"
-          : item.name?.toLowerCase().includes("milk")
-            ? "🥛"
-            : "📦"}
+        {item.imageUrl ? (
+          <img
+            src={item.imageUrl}
+            alt={item.name}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        ) : (
+          <div
+            style={
+              {
+                /* 기존 이모지 스타일 */
+              }
+            }
+          >
+            {item.name?.toLowerCase().includes("apple") ? "🍎" : "📦"}
+          </div>
+        )}
       </div>
 
       {/* 아이템 기본 정보 */}

@@ -9,29 +9,73 @@ export default function AddSharedItemPage() {
   // 1. 모든 입력값을 formData 하나로 관리
   const [formData, setFormData] = useState({
     name: "",
-    status: "free", // ERD: status (free, pickup)
+    status: "free",
     quantity: "",
-    expiryDate: "", // ERD: expiry_date
+    expiryDate: "",
     description: "",
   });
 
   const [loading, setLoading] = useState(false);
 
+  // 📸 추가: 이미지 파일과 미리보기 URL을 위한 상태
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+
+  // 📸 추가: 파일 선택 시 호출되는 핸들러
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      setPreviewUrl(URL.createObjectURL(file)); // 브라우저 메모리에 임시 미리보기 생성
+    }
+  };
+
+  // 📸 추가: Cloudinary 업로드 함수
+  const uploadImageToCloudinary = async () => {
+    if (!imageFile) return null;
+
+    const cloudName = "dwc2isol3";
+    const uploadPreset = "ml_default";
+
+    const uploadData = new FormData();
+    uploadData.append("file", imageFile);
+    uploadData.append("upload_preset", uploadPreset);
+
+    try {
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        {
+          method: "POST",
+          body: uploadData,
+        },
+      );
+      const data = await res.json();
+      return data.secure_url; // 업로드된 이미지의 최종 URL 반환
+    } catch (error) {
+      console.error("Cloudinary Upload Error:", error);
+      return null;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 1. 필수값 검증
     if (!formData.name || !formData.expiryDate) {
       return alert("Please enter Item Name and Expiry Date!");
     }
 
     setLoading(true);
 
-    // 2. 위치 정보와 함께 데이터 전송
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
           try {
+            // 📸 추가: 폼 전송 전 이미지를 먼저 업로드합니다.
+            let uploadedImageUrl = "";
+            if (imageFile) {
+              uploadedImageUrl = await uploadImageToCloudinary();
+            }
+
             const res = await fetch("/api/shared", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -39,23 +83,21 @@ export default function AddSharedItemPage() {
                 name: formData.name,
                 description: formData.description,
                 status: formData.status,
-                // ✅ 숫자로 변환하여 전송 (서버에서 Number() 처리를 하지만 여기서도 맞춰줌)
                 quantity: formData.quantity ? Number(formData.quantity) : 1,
                 expiryDate: formData.expiryDate,
                 lat: pos.coords.latitude,
                 lng: pos.coords.longitude,
-                // ✅ 드디어 찾은 진짜 MongoDB ID 적용!
                 userId: "69d6af373b29c68390dd5a0e",
-                category: "Food", // 필수값이므로 포함
+                category: "Food",
+                imageUrl: uploadedImageUrl, // 📸 추가: 이미지 URL을 서버로 보냄
               }),
             });
 
             if (res.ok) {
               alert("Item registered successfully! 🍎");
-              router.push("/shared"); // 등록 성공 시 목록 페이지로 이동
+              router.push("/shared");
             } else {
               const errorData = await res.json();
-              console.error("Server error details:", errorData);
               alert(`Failed: ${errorData.error || "Unknown error"}`);
             }
           } catch (error) {
@@ -68,9 +110,8 @@ export default function AddSharedItemPage() {
         (error) => {
           setLoading(false);
           alert("Location access is required to share items.");
-          console.error("Geolocation error:", error);
         },
-        { timeout: 10000 }, // 위치 정보 획득 타임아웃 설정 (선택사항)
+        { timeout: 10000 },
       );
     } else {
       setLoading(false);
@@ -90,7 +131,6 @@ export default function AddSharedItemPage() {
         minHeight: "100vh",
       }}
     >
-      {/* 상단 헤더 */}
       <div
         style={{
           display: "flex",
@@ -111,28 +151,58 @@ export default function AddSharedItemPage() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        {/* 이미지 업로드 영역 (UI 유지) */}
-        <div
-          style={{
-            width: "100%",
-            height: "180px",
-            backgroundColor: "#f9fafb",
-            borderRadius: "20px",
-            border: "2px dashed #e5e7eb",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            marginBottom: "25px",
-            cursor: "pointer",
-          }}
-        >
-          <span style={{ fontSize: "30px" }}>📸</span>
-          <span
-            style={{ fontSize: "14px", color: "#9ca3af", marginTop: "8px" }}
+        {/* 📸 수정: 이미지 업로드 영역 */}
+        <div style={{ marginBottom: "25px" }}>
+          <label
+            htmlFor="image-upload"
+            style={{
+              width: "100%",
+              height: "200px", // 높이를 조금 더 키웠습니다
+              backgroundColor: "#f9fafb",
+              borderRadius: "20px",
+              border: "2px dashed #e5e7eb",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+              cursor: "pointer",
+              overflow: "hidden", // 이미지가 둥근 테두리 밖으로 나가지 않게 함
+              position: "relative", // 내부 요소 배치를 위해 추가
+            }}
           >
-            Add Photo
-          </span>
+            {previewUrl ? (
+              <img
+                src={previewUrl}
+                alt="Preview"
+                style={{
+                  width: "100%", // 가로를 꽉 채움
+                  height: "100%", // 세로를 꽉 채움
+                  objectFit: "cover", // 👈 핵심: 비율을 유지하며 칸을 꽉 채움 (잘리는 부분 발생)
+                  display: "block",
+                }}
+              />
+            ) : (
+              <>
+                <span style={{ fontSize: "30px" }}>📸</span>
+                <span
+                  style={{
+                    fontSize: "14px",
+                    color: "#9ca3af",
+                    marginTop: "8px",
+                  }}
+                >
+                  Add Photo
+                </span>
+              </>
+            )}
+          </label>
+          <input
+            id="image-upload"
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            style={{ display: "none" }}
+          />
         </div>
 
         {/* Item Name */}
@@ -165,7 +235,7 @@ export default function AddSharedItemPage() {
           />
         </div>
 
-        {/* Status (Free / Pickup) */}
+        {/* Status */}
         <div style={{ marginBottom: "20px" }}>
           <label
             style={{
@@ -222,7 +292,7 @@ export default function AddSharedItemPage() {
             </label>
             <input
               type="text"
-              placeholder="e.g. 5 units"
+              placeholder="e.g. 5"
               value={formData.quantity}
               onChange={(e) =>
                 setFormData({ ...formData, quantity: e.target.value })
@@ -317,7 +387,7 @@ export default function AddSharedItemPage() {
             transition: "0.2s",
           }}
         >
-          {loading ? "Posting..." : "Post Item"}
+          {loading ? "Posting with Image..." : "Post Item"}
         </button>
       </form>
     </div>
