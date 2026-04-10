@@ -1,182 +1,188 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
+    setIsLoading(true);
 
     try {
-      // 📝 백엔드 API 경로가 /api/login 인지 /api/auth/login 인지 확인 필요!
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
       });
 
-      const data = await res.json();
-
-      if (res.ok) {
-        // ✅ 로그인 성공 시 메인 페이지로 이동 및 데이터 갱신
+      if (result?.error) {
+        alert("이메일 또는 비밀번호가 올바르지 않습니다.");
+      } else {
         router.push("/");
         router.refresh();
-      } else {
-        setError(data.error || "로그인에 실패했습니다.");
       }
-    } catch (err) {
-      setError("서버와 통신 중 오류가 발생했습니다.");
+    } catch (error) {
+      console.error("로그인 중 에러 발생:", error);
+      alert("서버 연결에 실패했습니다.");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <div style={containerStyle}>
-      <div style={cardStyle}>
-        <h1 style={titleStyle}>Welcome Back! 🧊</h1>
-        <p style={subtitleStyle}>냉장고를 관리하러 가볼까요?</p>
-
-        <form onSubmit={handleLogin} style={formStyle}>
-          <div style={inputGroupStyle}>
-            <label style={labelStyle}>이메일</label>
-            <input
-              type="email"
-              placeholder="example@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={inputStyle}
-              required
-            />
-          </div>
-
-          <div style={inputGroupStyle}>
-            <label style={labelStyle}>비밀번호</label>
-            <input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={inputStyle}
-              required
-            />
-          </div>
-
-          {error && <p style={errorStyle}>{error}</p>}
-
-          <button type="submit" disabled={loading} style={buttonStyle}>
-            {loading ? "로그인 중..." : "로그인"}
-          </button>
-        </form>
-
-        <div style={footerStyle}>
-          아직 계정이 없으신가요?{" "}
-          <Link href="/signup" style={linkStyle}>
-            회원가입
-          </Link>
+      {/* 상단 헤더 섹션 */}
+      <div style={{ textAlign: "center", marginBottom: "40px" }}>
+        <div style={logoWrapperStyle}>
+          <span style={{ fontSize: "44px" }}>🧊</span>
         </div>
+        <h1
+          style={{
+            fontSize: "30px",
+            fontWeight: "800",
+            color: "#111827",
+            letterSpacing: "-0.5px",
+          }}
+        >
+          반가워요!
+        </h1>
+        <p
+          style={{
+            color: "#6b7280",
+            marginTop: "12px",
+            fontSize: "15px",
+            lineHeight: "1.5",
+          }}
+        >
+          나만의 냉장고를 관리하고
+          <br />
+          이웃과 신선한 음식을 나눠보세요.
+        </p>
+      </div>
+
+      {/* 로그인 폼 */}
+      <form
+        onSubmit={handleSubmit}
+        style={{ display: "flex", flexDirection: "column", gap: "14px" }}
+      >
+        <div style={inputGroupStyle}>
+          <input
+            type="email"
+            placeholder="이메일 주소"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            style={inputStyle}
+          />
+        </div>
+        <div style={inputGroupStyle}>
+          <input
+            type="password"
+            placeholder="비밀번호"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            style={inputStyle}
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={isLoading}
+          style={{
+            ...buttonStyle,
+            opacity: isLoading ? 0.7 : 1,
+            transform: isLoading ? "scale(0.98)" : "scale(1)",
+          }}
+        >
+          {isLoading ? "로그인 중..." : "로그인하기"}
+        </button>
+      </form>
+
+      {/* 하단 링크 */}
+      <div style={footerStyle}>
+        처음이신가요?{" "}
+        <Link href="/auth/signup" style={linkStyle}>
+          회원가입하기
+        </Link>
       </div>
     </div>
   );
 }
 
-// --- Styles (인라인 스타일로 깔끔하게 정리) ---
+// --- Styles ---
 
 const containerStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
+  padding: "100px 24px",
+  maxWidth: "420px",
+  margin: "0 auto",
+  fontFamily:
+    "Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif",
   minHeight: "100vh",
-  backgroundColor: "#f9fafb",
-  padding: "20px",
+  boxSizing: "border-box",
 };
 
-const cardStyle: React.CSSProperties = {
-  backgroundColor: "white",
-  padding: "40px",
+const logoWrapperStyle: React.CSSProperties = {
+  width: "80px",
+  height: "80px",
+  backgroundColor: "#eff6ff",
   borderRadius: "24px",
-  boxShadow: "0 10px 25px rgba(0,0,0,0.05)",
-  width: "100%",
-  maxWidth: "400px",
-  textAlign: "center",
-};
-
-const titleStyle: React.CSSProperties = {
-  fontSize: "24px",
-  fontWeight: "800",
-  marginBottom: "8px",
-  color: "#111827",
-};
-
-const subtitleStyle: React.CSSProperties = {
-  fontSize: "14px",
-  color: "#6b7280",
-  marginBottom: "32px",
-};
-
-const formStyle: React.CSSProperties = {
   display: "flex",
-  flexDirection: "column",
-  gap: "20px",
-  textAlign: "left",
+  alignItems: "center",
+  justifyContent: "center",
+  margin: "0 auto 24px",
 };
 
 const inputGroupStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "8px",
-};
-
-const labelStyle: React.CSSProperties = {
-  fontSize: "13px",
-  fontWeight: "600",
-  color: "#374151",
+  position: "relative",
+  width: "100%",
 };
 
 const inputStyle: React.CSSProperties = {
-  padding: "12px 16px",
-  borderRadius: "12px",
-  border: "1px solid #e5e7eb",
-  fontSize: "14px",
+  width: "100%",
+  padding: "18px 20px",
+  borderRadius: "16px",
+  border: "1.5px solid #f3f4f6",
+  backgroundColor: "#f9fafb",
+  fontSize: "16px",
   outline: "none",
+  transition: "all 0.2s ease",
+  boxSizing: "border-box",
+  color: "#1f2937",
 };
 
 const buttonStyle: React.CSSProperties = {
-  padding: "14px",
-  borderRadius: "12px",
-  border: "none",
+  width: "100%",
+  padding: "18px",
   backgroundColor: "#3b82f6",
   color: "white",
+  border: "none",
+  borderRadius: "16px",
   fontSize: "16px",
   fontWeight: "700",
   cursor: "pointer",
-  marginTop: "10px",
-  transition: "background-color 0.2s",
-};
-
-const errorStyle: React.CSSProperties = {
-  color: "#ef4444",
-  fontSize: "13px",
-  marginTop: "-10px",
+  marginTop: "12px",
+  boxShadow: "0 10px 15px -3px rgba(59, 130, 246, 0.3)",
+  transition: "all 0.2s ease",
 };
 
 const footerStyle: React.CSSProperties = {
-  marginTop: "24px",
+  marginTop: "32px",
+  textAlign: "center",
   fontSize: "14px",
-  color: "#6b7280",
+  color: "#9ca3af",
 };
 
 const linkStyle: React.CSSProperties = {
   color: "#3b82f6",
+  fontWeight: "700",
   textDecoration: "none",
-  fontWeight: "600",
+  marginLeft: "6px",
 };

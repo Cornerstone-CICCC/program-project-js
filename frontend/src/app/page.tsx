@@ -2,9 +2,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSession, signOut } from "next-auth/react"; // ✅ 추가
 
 export default function HomePage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [sharedItems, setSharedItems] = useState<any[]>([]);
   const [ingredients, setIngredients] = useState<any[]>([]);
   const [isClient, setIsClient] = useState(false);
@@ -13,9 +15,18 @@ export default function HomePage() {
   useEffect(() => {
     setIsClient(true);
 
+    // 세션 체크 중이면 대기
+    if (status === "loading") return;
+
+    // ✅ 로그인 안 되어 있으면 로그인 페이지로
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
+      return;
+    }
+
     const fetchData = async () => {
       try {
-        // 1. 냉장고 재료 가져오기
+        // 1. 내 냉장고 재료 가져오기
         const ingRes = await fetch("/api/ingredients");
 
         if (ingRes.status === 401) {
@@ -28,11 +39,12 @@ export default function HomePage() {
           setIngredients(Array.isArray(ingData) ? ingData : []);
           setIsCheckingAuth(false);
         } else {
-          router.push("/auth/login");
-          return;
+          // 401 외의 에러 발생 시 처리
+          console.error("재료 로드 실패");
+          setIsCheckingAuth(false);
         }
 
-        // 2. 나눔 보드 아이템 가져오기
+        // 2. 나눔 보드 아이템 가져오기 (인증과 별개로 로드 시도)
         try {
           const sharedRes = await fetch("/api/shared");
           if (sharedRes.ok) {
@@ -45,30 +57,35 @@ export default function HomePage() {
         }
       } catch (error) {
         console.error("데이터 로드 중 에러 발생:", error);
-        router.push("/auth/login");
+        // 심각한 에러 발생 시 로그인 페이지로 이동하거나 에러 UI 표시
       }
     };
 
     fetchData();
-  }, [router]);
+  }, [status, router]); // ✅ status(로그인 상태)가 변경될 때마다 실행
 
-  if (isCheckingAuth) {
+  // 1. 클라이언트 사이드 렌더링 확인 전이거나 세션 정보를 불러오는 중일 때
+  if (!isClient || status === "loading" || isCheckingAuth) {
     return (
       <div
         style={{
           display: "flex",
+          flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
           height: "100vh",
           backgroundColor: "#fcfcfc",
-          fontSize: "16px",
-          color: "#6b7280",
-          fontWeight: "600",
         }}
       >
-        보안 연결 중... 🧊
+        <span style={{ fontSize: "50px", marginBottom: "20px" }}>🧊</span>
+        <p style={{ color: "#6b7280", fontWeight: "600" }}>냉장고 확인 중...</p>
       </div>
     );
+  }
+
+  // 2. 로그인이 안 되어 있는 경우 (useEffect에서 리다이렉트하지만 안전장치로 추가)
+  if (status === "unauthenticated") {
+    return null;
   }
 
   return (
@@ -92,12 +109,18 @@ export default function HomePage() {
           marginBottom: "10px",
         }}
       >
-        <Link
-          href="/auth/login"
-          style={{ fontSize: "12px", color: "#6b7280", textDecoration: "none" }}
+        <button
+          onClick={() => signOut({ callbackUrl: "/auth/login" })} // ✅ 실제 로그아웃 기능 연결
+          style={{
+            fontSize: "12px",
+            color: "#6b7280",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+          }}
         >
-          로그아웃
-        </Link>
+          로그아웃 ({session?.user?.name || "User"})
+        </button>
       </div>
 
       <h1
