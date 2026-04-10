@@ -41,12 +41,16 @@ model Ingredient {
   userId      String?  @db.ObjectId 
   user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade) 
   name        String
-  emoji       String?  @default("📦")
-  quantity    Float    @default(1)
-  unit        String?  
+  emoji            String?  @default("📦")
+  quantity         Float    @default(1)
+  unit             String?  @default("개")
   category    String   
   location    String   @default("fridge") 
   expiryDate  DateTime
+
+  memo             String?  // 메모 기능
+  purchaseLocation String?  // 구매처 (예: 이마트, 마켓컬리)
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

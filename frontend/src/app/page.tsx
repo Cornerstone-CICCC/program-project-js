@@ -11,6 +11,7 @@ export default function HomePage() {
   const [ingredients, setIngredients] = useState<any[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [editingItem, setEditingItem] = useState<any>(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -87,6 +88,66 @@ export default function HomePage() {
   if (status === "unauthenticated") {
     return null;
   }
+
+  // 1. 삭제 로직
+  const deleteIngredient = async (id: string) => {
+    if (!confirm("정말 이 재료를 삭제하시겠습니까?")) return;
+
+    try {
+      const response = await fetch(`/api/ingredients/${id}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        setIngredients((prev) => prev.filter((item) => item.id !== id));
+        setEditingItem(null); // 삭제 후 모달 닫기
+      } else {
+        alert("삭제에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("Delete request failed:", error);
+    }
+  };
+
+  // 2. 수량 조절 (로컬 상태만 변경)
+  const adjustQuantity = (amount: number) => {
+    if (!editingItem) return;
+    // 수량이 0 미만으로 내려가지 않게 소수점 첫째자리까지 반올림 처리 (부동소수점 오차 방지)
+    const newQty = Math.max(
+      0,
+      Math.round((editingItem.quantity + amount) * 10) / 10,
+    );
+    setEditingItem({ ...editingItem, quantity: newQty });
+  };
+
+  // 3. 모달에서 "저장하기" 클릭 시 실행
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+
+    try {
+      const res = await fetch(`/api/ingredients/${editingItem.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editingItem.name,
+          quantity: editingItem.quantity,
+          unit: editingItem.unit,
+          expiryDate: editingItem.expiryDate,
+          emoji: editingItem.emoji,
+          memo: editingItem.memo, // ✅ 이미 정의된 memo 필드 추가
+        }),
+      });
+
+      if (res.ok) {
+        const updated = await res.json();
+        setIngredients(
+          ingredients.map((ing) => (ing.id === updated.id ? updated : ing)),
+        );
+        setEditingItem(null);
+      }
+    } catch (error) {
+      console.error("Failed to update:", error);
+    }
+  };
 
   return (
     <div
@@ -170,6 +231,7 @@ export default function HomePage() {
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           {isClient && ingredients.length > 0 ? (
             ingredients.map((item: any) => {
+              // 1. 날짜 및 상태 계산 로직
               const expiryDate = item.expiryDate
                 ? new Date(item.expiryDate)
                 : new Date();
@@ -180,9 +242,11 @@ export default function HomePage() {
               const isUrgent = diffDays <= 3 && diffDays >= 0;
               const isExpired = diffDays < 0;
 
+              // 2. 반드시 return 문이 있어야 UI가 렌더링됩니다.
               return (
                 <div
                   key={item.id}
+                  onClick={() => setEditingItem(item)} // 클릭 시 편집 모달 오픈
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
@@ -190,14 +254,23 @@ export default function HomePage() {
                     padding: "15px",
                     backgroundColor: "white",
                     borderRadius: "16px",
+                    cursor: "pointer",
                     border: isUrgent
                       ? "2px solid #fef3c7"
                       : isExpired
                         ? "2px solid #fee2e2"
                         : "1px solid #f3f4f6",
                     boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
+                    transition: "all 0.1s ease",
                   }}
+                  onMouseOver={(e) =>
+                    (e.currentTarget.style.transform = "scale(1.01)")
+                  }
+                  onMouseOut={(e) =>
+                    (e.currentTarget.style.transform = "scale(1)")
+                  }
                 >
+                  {/* 왼쪽: 이콘 및 정보 */}
                   <div
                     style={{
                       display: "flex",
@@ -211,6 +284,17 @@ export default function HomePage() {
                     <div>
                       <div style={{ fontWeight: "700", fontSize: "15px" }}>
                         {item.name}
+                        <span
+                          style={{
+                            fontSize: "13px",
+                            color: "#6b7280",
+                            marginLeft: "6px",
+                            fontWeight: "400",
+                          }}
+                        >
+                          {item.quantity}
+                          {item.unit}
+                        </span>
                       </div>
                       <div
                         style={{
@@ -227,34 +311,66 @@ export default function HomePage() {
                       </div>
                     </div>
                   </div>
-                  {isUrgent && (
-                    <span
-                      style={{
-                        fontSize: "10px",
-                        backgroundColor: "#fffbeb",
-                        color: "#d97706",
-                        padding: "2px 8px",
-                        borderRadius: "10px",
-                        fontWeight: "800",
-                      }}
-                    >
-                      URGENT
+
+                  {/* 오른쪽: 상태 라벨 및 화살표 */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    {isUrgent && (
+                      <span
+                        style={{
+                          fontSize: "10px",
+                          backgroundColor: "#fffbeb",
+                          color: "#d97706",
+                          padding: "2px 8px",
+                          borderRadius: "10px",
+                          fontWeight: "800",
+                        }}
+                      >
+                        URGENT
+                      </span>
+                    )}
+                    {isExpired && (
+                      <span
+                        style={{
+                          fontSize: "10px",
+                          backgroundColor: "#fee2e2",
+                          color: "#ef4444",
+                          padding: "2px 8px",
+                          borderRadius: "10px",
+                          fontWeight: "800",
+                        }}
+                      >
+                        EXPIRED
+                      </span>
+                    )}
+                    <span style={{ color: "#d1d5db", fontSize: "18px" }}>
+                      ›
                     </span>
-                  )}
+                  </div>
                 </div>
               );
             })
           ) : (
+            /* 데이터가 없을 때 표시되는 UI */
             <div
               style={{
                 textAlign: "center",
-                padding: "20px",
+                padding: "40px 20px",
                 color: "#9ca3af",
                 border: "1px dashed #e5e7eb",
-                borderRadius: "16px",
+                borderRadius: "24px",
+                backgroundColor: "#f9fafb",
               }}
             >
-              냉장고가 비어있습니다.
+              <div style={{ fontSize: "30px", marginBottom: "10px" }}>
+                Empty
+              </div>
+              <p style={{ fontSize: "14px" }}>냉장고가 비어있습니다.</p>
             </div>
           )}
         </div>
@@ -318,14 +434,32 @@ export default function HomePage() {
                           ? "🥛"
                           : "📦"}
                   </div>
-                  <div
-                    style={{
-                      fontWeight: "700",
-                      fontSize: "15px",
-                      marginBottom: "5px",
-                    }}
-                  >
+                  <div style={{ fontWeight: "700", fontSize: "15px" }}>
                     {item.name}
+                    {/* 메모가 있으면 작은 아이콘 표시 */}
+                    {item.memo && (
+                      <span
+                        style={{
+                          marginLeft: "6px",
+                          fontSize: "12px",
+                          verticalAlign: "middle",
+                        }}
+                        title={item.memo}
+                      >
+                        📝
+                      </span>
+                    )}
+                    <span
+                      style={{
+                        fontSize: "13px",
+                        color: "#6b7280",
+                        marginLeft: "6px",
+                        fontWeight: "400",
+                      }}
+                    >
+                      {item.quantity}
+                      {item.unit}
+                    </span>
                   </div>
                   <div
                     style={{
@@ -361,6 +495,104 @@ export default function HomePage() {
           )}
         </div>
       </section>
+
+      {/* 🔴 [추가됨] 4. 편집 모달 영역 🔴 */}
+      {editingItem && (
+        <div style={modalOverlayStyle} onClick={() => setEditingItem(null)}>
+          <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ marginBottom: "20px", fontSize: "20px" }}>
+              재료 수정 ✏️
+            </h2>
+
+            <label style={labelStyle}>재료 이름</label>
+            <input
+              style={inputStyle}
+              value={editingItem.name}
+              onChange={(e) =>
+                setEditingItem({ ...editingItem, name: e.target.value })
+              }
+            />
+
+            <label style={labelStyle}>수량 조절</label>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "15px",
+                marginBottom: "25px",
+              }}
+            >
+              <button style={qtyBtnStyle} onClick={() => adjustQuantity(-0.5)}>
+                -0.5
+              </button>
+              <span style={{ fontSize: "18px", fontWeight: "800" }}>
+                {editingItem.quantity} {editingItem.unit}
+              </span>
+              <button style={qtyBtnStyle} onClick={() => adjustQuantity(0.5)}>
+                +0.5
+              </button>
+            </div>
+
+            <label style={labelStyle}>유통기한</label>
+            <input
+              type="date"
+              style={{
+                ...inputStyle,
+                marginBottom: "20px",
+              }}
+              // 날짜 형식을 YYYY-MM-DD로 변환하여 value에 전달
+              value={
+                editingItem.expiryDate
+                  ? new Date(editingItem.expiryDate).toISOString().split("T")[0]
+                  : ""
+              }
+              onChange={(e) =>
+                setEditingItem({
+                  ...editingItem,
+                  expiryDate: new Date(e.target.value),
+                })
+              }
+            />
+
+            <label style={labelStyle}>메모</label>
+            <textarea
+              style={{
+                ...inputStyle, // 기존 input 스타일 재활용
+                height: "100px",
+                padding: "12px",
+                fontSize: "14px",
+                resize: "none", // 사용자 크기 조절 방지
+                lineHeight: "1.5",
+                marginBottom: "25px",
+              }}
+              placeholder="보관 방법이나 유의사항을 적어주세요."
+              value={editingItem.memo || ""}
+              onChange={(e) =>
+                setEditingItem({ ...editingItem, memo: e.target.value })
+              }
+            />
+
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                style={cancelBtnStyle}
+                onClick={() => setEditingItem(null)}
+              >
+                취소
+              </button>
+              <button style={saveBtnStyle} onClick={handleSaveEdit}>
+                저장하기
+              </button>
+            </div>
+
+            <button
+              style={deleteBtnStyle}
+              onClick={() => deleteIngredient(editingItem.id)}
+            >
+              이 재료 삭제하기
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 하단 내비게이션 바 */}
       <nav
@@ -439,3 +671,97 @@ function NavItem({
     </div>
   );
 }
+
+// --- Styles (HomePage 함수 바깥에 정의) ---
+
+const modalOverlayStyle: React.CSSProperties = {
+  position: "fixed",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: "rgba(0, 0, 0, 0.4)", // 배경을 약간 어둡게
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  zIndex: 9999, // 최상단에 보이도록
+  backdropFilter: "blur(4px)", // 배경 흐림 효과 (선택)
+};
+
+const modalContentStyle: React.CSSProperties = {
+  backgroundColor: "white",
+  padding: "30px",
+  borderRadius: "24px",
+  width: "90%",
+  maxWidth: "400px",
+  boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
+  display: "flex",
+  flexDirection: "column",
+};
+
+const labelStyle: React.CSSProperties = {
+  fontSize: "14px",
+  fontWeight: "600",
+  color: "#6b7280",
+  marginBottom: "8px",
+  display: "block",
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "14px",
+  borderRadius: "12px",
+  border: "1px solid #e5e7eb",
+  fontSize: "16px",
+  marginBottom: "20px",
+  outline: "none",
+  boxSizing: "border-box",
+};
+
+const qtyBtnStyle: React.CSSProperties = {
+  padding: "10px 15px",
+  borderRadius: "12px",
+  border: "1px solid #e5e7eb",
+  backgroundColor: "#f9fafb",
+  cursor: "pointer",
+  fontWeight: "bold",
+  fontSize: "14px",
+  transition: "all 0.2s",
+};
+
+const saveBtnStyle: React.CSSProperties = {
+  flex: 2,
+  padding: "16px",
+  backgroundColor: "#3b82f6",
+  color: "white",
+  border: "none",
+  borderRadius: "14px",
+  fontSize: "16px",
+  fontWeight: "700",
+  cursor: "pointer",
+};
+
+const cancelBtnStyle: React.CSSProperties = {
+  flex: 1,
+  padding: "16px",
+  backgroundColor: "#f3f4f6",
+  color: "#4b5563",
+  border: "none",
+  borderRadius: "14px",
+  fontSize: "16px",
+  fontWeight: "600",
+  cursor: "pointer",
+};
+
+const deleteBtnStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "12px",
+  backgroundColor: "transparent",
+  color: "#ef4444",
+  border: "none",
+  fontSize: "14px",
+  fontWeight: "600",
+  cursor: "pointer",
+  marginTop: "10px",
+  textDecoration: "underline",
+};
