@@ -7,8 +7,6 @@ export default function HomePage() {
   const router = useRouter();
   const [sharedItems, setSharedItems] = useState<any[]>([]);
   const [ingredients, setIngredients] = useState<any[]>([]);
-  const [recipe, setRecipe] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
@@ -17,12 +15,10 @@ export default function HomePage() {
 
     const fetchData = async () => {
       try {
-        // 1. 냉장고 재료 가져오기 (인증 여부 확인 겸용)
+        // 1. 냉장고 재료 가져오기
         const ingRes = await fetch("/api/ingredients");
 
-        // ✅ 2. 로그인 안 된 경우 즉시 리다이렉트
         if (ingRes.status === 401) {
-          console.log("인증 실패: 로그인 페이지로 이동합니다.");
           router.push("/auth/login");
           return;
         }
@@ -30,18 +26,22 @@ export default function HomePage() {
         if (ingRes.ok) {
           const ingData = await ingRes.json();
           setIngredients(Array.isArray(ingData) ? ingData : []);
-          // ✅ 인증 확인 완료 상태로 변경
           setIsCheckingAuth(false);
         } else {
           router.push("/auth/login");
           return;
         }
 
-        // 3. 나눔 보드 아이템 가져오기
-        const sharedRes = await fetch("/api/shared");
-        if (sharedRes.ok) {
-          const sharedData = await sharedRes.json();
-          setSharedItems(Array.isArray(sharedData) ? sharedData : []);
+        // 2. 나눔 보드 아이템 가져오기
+        try {
+          const sharedRes = await fetch("/api/shared");
+          if (sharedRes.ok) {
+            const sharedData = await sharedRes.json();
+            setSharedItems(Array.isArray(sharedData) ? sharedData : []);
+          }
+        } catch (sharedError) {
+          console.error("나눔 목록 로드 실패 (무시하고 진행):", sharedError);
+          setSharedItems([]);
         }
       } catch (error) {
         console.error("데이터 로드 중 에러 발생:", error);
@@ -52,28 +52,6 @@ export default function HomePage() {
     fetchData();
   }, [router]);
 
-  // AI 레시피 추천 로직
-  const getRecipe = async () => {
-    if (ingredients.length === 0) {
-      alert("냉장고에 재료가 없으면 레시피를 추천받을 수 없습니다!");
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await fetch("/api/recommend");
-      if (!res.ok) throw new Error("Failed to fetch recipe");
-
-      const data = await res.json();
-      setRecipe(data);
-    } catch (error) {
-      console.error("레시피를 가져오는데 실패했습니다.", error);
-      alert("레시피 추천 기능에 문제가 발생했습니다.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ✅ [체크] 인증 확인 중일 때의 렌더링 (가장 먼저 위치해야 함)
   if (isCheckingAuth) {
     return (
       <div
@@ -135,7 +113,7 @@ export default function HomePage() {
         <span>🧊</span> 내 냉장고
       </h1>
 
-      {/* 액션 버튼 */}
+      {/* 액션 버튼 그룹 - AI 버튼 제거됨 */}
       <div style={{ display: "flex", gap: "10px", marginBottom: "30px" }}>
         <Link
           href="/add"
@@ -152,52 +130,9 @@ export default function HomePage() {
         >
           + 재료 추가
         </Link>
-        <button
-          onClick={getRecipe}
-          disabled={loading}
-          style={{
-            padding: "12px 20px",
-            backgroundColor: loading ? "#ccc" : "#9333ea",
-            color: "white",
-            borderRadius: "12px",
-            border: "none",
-            cursor: loading ? "default" : "pointer",
-            fontWeight: "bold",
-            boxShadow: "0 2px 4px rgba(147, 51, 234, 0.2)",
-            fontSize: "14px",
-          }}
-        >
-          {loading ? "AI 분석 중..." : "🪄 AI 레시피"}
-        </button>
       </div>
 
-      {/* AI 레시피 영역 */}
-      {recipe && (
-        <div
-          style={{
-            backgroundColor: "#fffbeb",
-            padding: "20px",
-            borderRadius: "20px",
-            border: "2px solid #fef3c7",
-            marginBottom: "30px",
-          }}
-        >
-          <h2 style={{ color: "#92400e", fontSize: "18px", marginTop: 0 }}>
-            🍳 {recipe.title}
-          </h2>
-          <ol
-            style={{ fontSize: "14px", paddingLeft: "20px", color: "#4b5563" }}
-          >
-            {recipe.steps?.map((s: string, i: number) => (
-              <li key={i} style={{ marginBottom: "5px" }}>
-                {s}
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-
-      {/* 1. 냉장고 재료 목록 */}
+      {/* 내 냉장고 목록 섹션 */}
       <section style={{ marginBottom: "40px" }}>
         <h3
           style={{
@@ -212,7 +147,6 @@ export default function HomePage() {
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           {isClient && ingredients.length > 0 ? (
             ingredients.map((item: any) => {
-              // ✅ 날짜 계산 시 undefined 방지 로직 추가
               const expiryDate = item.expiryDate
                 ? new Date(item.expiryDate)
                 : new Date();
@@ -303,7 +237,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 2. Shared Board 섹션 */}
+      {/* 나눔 게시판 섹션 */}
       <section style={{ marginBottom: "40px" }}>
         <div
           style={{
@@ -353,13 +287,13 @@ export default function HomePage() {
                   }}
                 >
                   <div style={{ fontSize: "32px", marginBottom: "10px" }}>
-                    {item.name?.toLowerCase().includes("사과") ||
-                    item.name?.toLowerCase().includes("apple")
-                      ? "🍎"
-                      : item.name?.toLowerCase().includes("우유") ||
-                          item.name?.toLowerCase().includes("milk")
-                        ? "🥛"
-                        : "📦"}
+                    {item.imageUrl
+                      ? "📸"
+                      : item.name?.toLowerCase().includes("apple")
+                        ? "🍎"
+                        : item.name?.toLowerCase().includes("milk")
+                          ? "🥛"
+                          : "📦"}
                   </div>
                   <div
                     style={{
@@ -405,7 +339,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 하단 네비게이션 */}
+      {/* 하단 내비게이션 바 */}
       <nav
         style={{
           position: "fixed",

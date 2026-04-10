@@ -7,73 +7,15 @@ const prisma = new PrismaClient();
 export async function GET() {
   try {
     const items = await prisma.sharedItem.findMany({
-      select: {
-        id: true,
-        name: true,
-        status: true,
-        // ✅ 모델에 맞춰 Int로 처리 (String?일 경우에도 문제 없음)
-        quantity: true,
-        description: true,
-        expiryDate: true,
-        lat: true,
-        lng: true,
-        userId: true,
-        imageUrl: true,
-        category: true,
-        availabilityStatus: true,
-        createdAt: true,
-        owner: {
-          select: {
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+      include: { owner: true },
     });
 
-    return NextResponse.json(items);
+    // owner 정보가 없는 잘못된 데이터는 필터링해서 에러 방지
+    const safeItems = items.filter((item) => item.owner !== null);
+
+    return Response.json(safeItems);
   } catch (error) {
-    console.error("❌ API GET Error (List):", error);
-    return NextResponse.json(
-      { error: "데이터 목록을 가져오는데 실패했습니다." },
-      { status: 500 },
-    );
-  }
-}
-
-// 2. 데이터 등록 (POST)
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-
-    const newItem = await prisma.sharedItem.create({
-      data: {
-        name: body.name,
-        category: body.category || "Food",
-        status: body.status || "free",
-        quantity: body.quantity ? Number(body.quantity) : 1,
-        description: body.description || "",
-        expiryDate: body.expiryDate ? new Date(body.expiryDate) : new Date(),
-        lat: parseFloat(body.lat) || 49.2827,
-        lng: parseFloat(body.lng) || -123.1207,
-        userId: body.userId,
-        imageUrl: body.imageUrl,
-        availabilityStatus: "available",
-      },
-    });
-
-    return NextResponse.json(newItem, { status: 201 });
-  } catch (error) {
-    console.error("❌ API POST Error:", error);
-    return NextResponse.json(
-      {
-        error: "등록 실패",
-        details: error instanceof Error ? error.message : "Internal Error",
-      },
-      { status: 500 },
-    );
+    console.error("SharedItems 로드 에러:", error);
+    return Response.json([]); // 에러 시 빈 배열을 반환하여 페이지를 살림
   }
 }
