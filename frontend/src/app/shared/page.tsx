@@ -276,8 +276,11 @@ export default function SharedBoardPage() {
                           backgroundColor: "#e5e7eb",
                         }}
                       ></div>
+                      {/* ⬇️ 이 부분을 아래와 같이 수정하세요 */}
                       <span style={{ fontSize: "11px", color: "#9ca3af" }}>
-                        {item.owner?.name || "User"}
+                        {item.owner
+                          ? `${item.owner.firstName} ${item.owner.lastName}`
+                          : "Unknown"}
                       </span>
                     </div>
                   </div>

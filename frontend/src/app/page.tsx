@@ -1,61 +1,97 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function HomePage() {
+  const router = useRouter();
   const [sharedItems, setSharedItems] = useState<any[]>([]);
   const [ingredients, setIngredients] = useState<any[]>([]);
   const [recipe, setRecipe] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
     setIsClient(true);
 
     const fetchData = async () => {
       try {
-        // 1. 냉장고 재료 가져오기
+        // 1. 냉장고 재료 가져오기 (인증 여부 확인 겸용)
         const ingRes = await fetch("/api/ingredients");
-        if (ingRes.ok) {
-          const ingText = await ingRes.text();
-          if (ingText) setIngredients(JSON.parse(ingText));
+
+        // ✅ 2. 로그인 안 된 경우 즉시 리다이렉트
+        if (ingRes.status === 401) {
+          console.log("인증 실패: 로그인 페이지로 이동합니다.");
+          router.push("/auth/login");
+          return;
         }
 
-        // 2. 나눔 보드 아이템 가져오기 (SyntaxError 방지 로직)
+        if (ingRes.ok) {
+          const ingData = await ingRes.json();
+          setIngredients(Array.isArray(ingData) ? ingData : []);
+          // ✅ 인증 확인 완료 상태로 변경
+          setIsCheckingAuth(false);
+        } else {
+          router.push("/auth/login");
+          return;
+        }
+
+        // 3. 나눔 보드 아이템 가져오기
         const sharedRes = await fetch("/api/shared");
         if (sharedRes.ok) {
-          const sharedText = await sharedRes.text();
-          if (sharedText) {
-            const sharedData = JSON.parse(sharedText);
-            setSharedItems(Array.isArray(sharedData) ? sharedData : []);
-          }
+          const sharedData = await sharedRes.json();
+          setSharedItems(Array.isArray(sharedData) ? sharedData : []);
         }
       } catch (error) {
         console.error("데이터 로드 중 에러 발생:", error);
+        router.push("/auth/login");
       }
     };
 
     fetchData();
-  }, []);
+  }, [router]);
 
   // AI 레시피 추천 로직
   const getRecipe = async () => {
+    if (ingredients.length === 0) {
+      alert("냉장고에 재료가 없으면 레시피를 추천받을 수 없습니다!");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/recommend");
       if (!res.ok) throw new Error("Failed to fetch recipe");
 
-      const text = await res.text();
-      if (text) {
-        setRecipe(JSON.parse(text));
-      }
+      const data = await res.json();
+      setRecipe(data);
     } catch (error) {
       console.error("레시피를 가져오는데 실패했습니다.", error);
-      alert("레시피 추천 기능에 일시적인 문제가 발생했습니다.");
+      alert("레시피 추천 기능에 문제가 발생했습니다.");
     } finally {
       setLoading(false);
     }
   };
+
+  // ✅ [체크] 인증 확인 중일 때의 렌더링 (가장 먼저 위치해야 함)
+  if (isCheckingAuth) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+          backgroundColor: "#fcfcfc",
+          fontSize: "16px",
+          color: "#6b7280",
+          fontWeight: "600",
+        }}
+      >
+        보안 연결 중... 🧊
+      </div>
+    );
+  }
 
   return (
     <div
@@ -70,6 +106,22 @@ export default function HomePage() {
         minHeight: "100vh",
       }}
     >
+      {/* 상단 로그아웃 */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          marginBottom: "10px",
+        }}
+      >
+        <Link
+          href="/auth/login"
+          style={{ fontSize: "12px", color: "#6b7280", textDecoration: "none" }}
+        >
+          로그아웃
+        </Link>
+      </div>
+
       <h1
         style={{
           fontSize: "28px",
@@ -98,8 +150,7 @@ export default function HomePage() {
             fontSize: "14px",
           }}
         >
-          {" "}
-          + 재료 추가{" "}
+          + 재료 추가
         </Link>
         <button
           onClick={getRecipe}
@@ -110,7 +161,7 @@ export default function HomePage() {
             color: "white",
             borderRadius: "12px",
             border: "none",
-            cursor: "pointer",
+            cursor: loading ? "default" : "pointer",
             fontWeight: "bold",
             boxShadow: "0 2px 4px rgba(147, 51, 234, 0.2)",
             fontSize: "14px",
@@ -159,10 +210,14 @@ export default function HomePage() {
           My Fridge ({ingredients.length})
         </h3>
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          {isClient &&
+          {isClient && ingredients.length > 0 ? (
             ingredients.map((item: any) => {
+              // ✅ 날짜 계산 시 undefined 방지 로직 추가
+              const expiryDate = item.expiryDate
+                ? new Date(item.expiryDate)
+                : new Date();
               const diffDays = Math.ceil(
-                (new Date(item.expiryDate).getTime() - new Date().getTime()) /
+                (expiryDate.getTime() - new Date().getTime()) /
                   (1000 * 60 * 60 * 24),
               );
               const isUrgent = diffDays <= 3 && diffDays >= 0;
@@ -211,7 +266,7 @@ export default function HomePage() {
                           fontWeight: "600",
                         }}
                       >
-                        Exp: {new Date(item.expiryDate).toLocaleDateString()}
+                        Exp: {expiryDate.toLocaleDateString()}
                       </div>
                     </div>
                   </div>
@@ -231,7 +286,20 @@ export default function HomePage() {
                   )}
                 </div>
               );
-            })}
+            })
+          ) : (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "20px",
+                color: "#9ca3af",
+                border: "1px dashed #e5e7eb",
+                borderRadius: "16px",
+              }}
+            >
+              냉장고가 비어있습니다.
+            </div>
+          )}
         </div>
       </section>
 
@@ -260,7 +328,6 @@ export default function HomePage() {
             View All
           </Link>
         </div>
-
         <div
           style={{
             display: "grid",
@@ -286,9 +353,11 @@ export default function HomePage() {
                   }}
                 >
                   <div style={{ fontSize: "32px", marginBottom: "10px" }}>
-                    {item.name?.toLowerCase().includes("apple")
+                    {item.name?.toLowerCase().includes("사과") ||
+                    item.name?.toLowerCase().includes("apple")
                       ? "🍎"
-                      : item.name?.toLowerCase().includes("milk")
+                      : item.name?.toLowerCase().includes("우유") ||
+                          item.name?.toLowerCase().includes("milk")
                         ? "🥛"
                         : "📦"}
                   </div>
@@ -357,15 +426,27 @@ export default function HomePage() {
         <Link href="/" style={{ textDecoration: "none", color: "inherit" }}>
           <NavItem icon="🏠" label="Home" active />
         </Link>
-        <NavItem icon="🍳" label="Recipe" />
+        <Link
+          href="/recipe"
+          style={{ textDecoration: "none", color: "inherit" }}
+        >
+          <NavItem icon="🍳" label="Recipe" />
+        </Link>
         <Link
           href="/shared"
           style={{ textDecoration: "none", color: "inherit" }}
         >
           <NavItem icon="🤝" label="Share" />
         </Link>
-        <NavItem icon="💬" label="Chat" />
-        <NavItem icon="👤" label="My Page" />
+        <Link href="/chat" style={{ textDecoration: "none", color: "inherit" }}>
+          <NavItem icon="💬" label="Chat" />
+        </Link>
+        <Link
+          href="/mypage"
+          style={{ textDecoration: "none", color: "inherit" }}
+        >
+          <NavItem icon="👤" label="My" />
+        </Link>
       </nav>
     </div>
   );

@@ -24,7 +24,8 @@ export async function GET() {
         createdAt: true,
         owner: {
           select: {
-            name: true,
+            firstName: true,
+            lastName: true,
           },
         },
       },
