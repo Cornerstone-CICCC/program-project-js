@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react"; // ✅ 추가
+import { cn } from "@/lib/utils"; // 위에서 만든 cn 함수
 
 export default function HomePage() {
   const router = useRouter();
@@ -91,15 +92,22 @@ export default function HomePage() {
 
   // 1. 삭제 로직
   const deleteIngredient = async (id: string) => {
+    if (!id) return; // ID가 없으면 중단
     if (!confirm("정말 이 재료를 삭제하시겠습니까?")) return;
 
     try {
       const response = await fetch(`/api/ingredients/${id}`, {
         method: "DELETE",
       });
+
       if (response.ok) {
-        setIngredients((prev) => prev.filter((item) => item.id !== id));
-        setEditingItem(null); // 삭제 후 모달 닫기
+        // id와 _id 모두 대응할 수 있도록 필터링
+        setIngredients((prev) =>
+          prev.filter((item) => (item.id || item._id) !== id),
+        );
+        setEditingItem(null);
+      } else if (response.status === 404) {
+        alert("삭제할 재료를 찾을 수 없거나 권한이 없습니다. (404)");
       } else {
         alert("삭제에 실패했습니다.");
       }
@@ -123,8 +131,11 @@ export default function HomePage() {
   const handleSaveEdit = async () => {
     if (!editingItem) return;
 
+    const targetId = editingItem.id || editingItem._id;
+    console.log("수정 요청 ID:", targetId); // 👈 터미널/콘솔에서 ID가 잘 찍히는지 확인
+
     try {
-      const res = await fetch(`/api/ingredients/${editingItem.id}`, {
+      const res = await fetch(`/api/ingredients/${targetId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -132,17 +143,22 @@ export default function HomePage() {
           quantity: editingItem.quantity,
           unit: editingItem.unit,
           expiryDate: editingItem.expiryDate,
-          emoji: editingItem.emoji,
-          memo: editingItem.memo, // ✅ 이미 정의된 memo 필드 추가
+          memo: editingItem.memo,
+          category: editingItem.category,
         }),
       });
 
       if (res.ok) {
         const updated = await res.json();
-        setIngredients(
-          ingredients.map((ing) => (ing.id === updated.id ? updated : ing)),
+        setIngredients((prev) =>
+          prev.map((ing) =>
+            (ing.id || ing._id) === (updated.id || updated._id) ? updated : ing,
+          ),
         );
         setEditingItem(null);
+      } else {
+        const errorData = await res.json();
+        alert(`수정 실패: ${errorData.error || "알 수 없는 에러"}`);
       }
     } catch (error) {
       console.error("Failed to update:", error);
@@ -157,7 +173,7 @@ export default function HomePage() {
           "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
         maxWidth: "600px",
         margin: "0 auto",
-        color: "#333",
+        color: "#111", // 약간 더 전문적인 딥블랙
         backgroundColor: "#fcfcfc",
         minHeight: "100vh",
       }}
@@ -171,7 +187,7 @@ export default function HomePage() {
         }}
       >
         <button
-          onClick={() => signOut({ callbackUrl: "/auth/login" })} // ✅ 실제 로그아웃 기능 연결
+          onClick={() => signOut({ callbackUrl: "/auth/login" })}
           style={{
             fontSize: "12px",
             color: "#6b7280",
@@ -197,18 +213,18 @@ export default function HomePage() {
         <span>🧊</span> 내 냉장고
       </h1>
 
-      {/* 액션 버튼 그룹 - AI 버튼 제거됨 */}
+      {/* 액션 버튼 그룹 */}
       <div style={{ display: "flex", gap: "10px", marginBottom: "30px" }}>
         <Link
           href="/add"
           style={{
             padding: "12px 20px",
-            backgroundColor: "#3b82f6",
+            backgroundColor: "#2563eb", // 더 전문적인 블루
             color: "white",
             borderRadius: "12px",
             textDecoration: "none",
             fontWeight: "bold",
-            boxShadow: "0 2px 4px rgba(59, 130, 246, 0.2)",
+            boxShadow: "0 2px 4px rgba(37, 99, 235, 0.2)", // 블루 그림자
             fontSize: "14px",
           }}
         >
@@ -216,7 +232,7 @@ export default function HomePage() {
         </Link>
       </div>
 
-      {/* 내 냉장고 목록 섹션 */}
+      {/* 내 냉장고 목록 섹션 (인라인 스타일 그대로 유지) */}
       <section style={{ marginBottom: "40px" }}>
         <h3
           style={{
@@ -245,8 +261,8 @@ export default function HomePage() {
               // 2. 반드시 return 문이 있어야 UI가 렌더링됩니다.
               return (
                 <div
-                  key={item.id}
-                  onClick={() => setEditingItem(item)} // 클릭 시 편집 모달 오픈
+                  key={item.id || item._id}
+                  onClick={() => setEditingItem(item)}
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
@@ -270,7 +286,6 @@ export default function HomePage() {
                     (e.currentTarget.style.transform = "scale(1)")
                   }
                 >
-                  {/* 왼쪽: 이콘 및 정보 */}
                   <div
                     style={{
                       display: "flex",
@@ -312,7 +327,6 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* 오른쪽: 상태 라벨 및 화살표 */}
                   <div
                     style={{
                       display: "flex",
@@ -356,7 +370,6 @@ export default function HomePage() {
               );
             })
           ) : (
-            /* 데이터가 없을 때 표시되는 UI */
             <div
               style={{
                 textAlign: "center",
@@ -436,7 +449,6 @@ export default function HomePage() {
                   </div>
                   <div style={{ fontWeight: "700", fontSize: "15px" }}>
                     {item.name}
-                    {/* 메모가 있으면 작은 아이콘 표시 */}
                     {item.memo && (
                       <span
                         style={{
@@ -496,100 +508,163 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 🔴 [추가됨] 4. 편집 모달 영역 🔴 */}
+      {/* --- 🔴 프로페셔널 & 컴팩트 모달 🔴 --- */}
       {editingItem && (
-        <div style={modalOverlayStyle} onClick={() => setEditingItem(null)}>
-          <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ marginBottom: "20px", fontSize: "20px" }}>
-              재료 수정 ✏️
-            </h2>
-
-            <label style={labelStyle}>재료 이름</label>
-            <input
-              style={inputStyle}
-              value={editingItem.name}
-              onChange={(e) =>
-                setEditingItem({ ...editingItem, name: e.target.value })
-              }
-            />
-
-            <label style={labelStyle}>수량 조절</label>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "15px",
-                marginBottom: "25px",
-              }}
-            >
-              <button style={qtyBtnStyle} onClick={() => adjustQuantity(-0.5)}>
-                -0.5
-              </button>
-              <span style={{ fontSize: "18px", fontWeight: "800" }}>
-                {editingItem.quantity} {editingItem.unit}
-              </span>
-              <button style={qtyBtnStyle} onClick={() => adjustQuantity(0.5)}>
-                +0.5
-              </button>
-            </div>
-
-            <label style={labelStyle}>유통기한</label>
-            <input
-              type="date"
-              style={{
-                ...inputStyle,
-                marginBottom: "20px",
-              }}
-              // 날짜 형식을 YYYY-MM-DD로 변환하여 value에 전달
-              value={
-                editingItem.expiryDate
-                  ? new Date(editingItem.expiryDate).toISOString().split("T")[0]
-                  : ""
-              }
-              onChange={(e) =>
-                setEditingItem({
-                  ...editingItem,
-                  expiryDate: new Date(e.target.value),
-                })
-              }
-            />
-
-            <label style={labelStyle}>메모</label>
-            <textarea
-              style={{
-                ...inputStyle, // 기존 input 스타일 재활용
-                height: "100px",
-                padding: "12px",
-                fontSize: "14px",
-                resize: "none", // 사용자 크기 조절 방지
-                lineHeight: "1.5",
-                marginBottom: "25px",
-              }}
-              placeholder="보관 방법이나 유의사항을 적어주세요."
-              value={editingItem.memo || ""}
-              onChange={(e) =>
-                setEditingItem({ ...editingItem, memo: e.target.value })
-              }
-            />
-
-            <div style={{ display: "flex", gap: "10px" }}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setEditingItem(null)}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+          }}
+        >
+          <div
+            className="w-full max-w-sm bg-white rounded-[24px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 모달 헤더 - 고급스러운 그레이/오렌지 포인트 */}
+            <div className="bg-orange-50/70 px-6 py-5 border-b border-orange-100/60 flex justify-between items-center">
+              <h2 className="text-lg font-black text-gray-800 flex items-center gap-3">
+                <span className="text-3xl">{editingItem.emoji || "✏️"}</span>
+                재료 정보 수정
+              </h2>
               <button
-                style={cancelBtnStyle}
                 onClick={() => setEditingItem(null)}
+                className="p-1.5 hover:bg-white rounded-full transition-colors"
               >
-                취소
-              </button>
-              <button style={saveBtnStyle} onClick={handleSaveEdit}>
-                저장하기
+                <svg
+                  className="w-5 h-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
               </button>
             </div>
 
-            <button
-              style={deleteBtnStyle}
-              onClick={() => deleteIngredient(editingItem.id)}
-            >
-              이 재료 삭제하기
-            </button>
+            {/* 모달 본문 - 컴팩트 레이아웃 */}
+            <div className="p-7 space-y-5">
+              {/* 재료 이름 - 한 줄 */}
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">
+                  재료 이름
+                </label>
+                <input
+                  type="text"
+                  value={editingItem.name}
+                  onChange={(e) =>
+                    setEditingItem({ ...editingItem, name: e.target.value })
+                  }
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-500 focus:bg-white outline-none transition-all font-semibold"
+                />
+              </div>
+
+              {/* 그리드 배치: 수량 조절 & 유통기한 */}
+              <div className="grid grid-cols-2 gap-4 items-end">
+                {/* 수량 조절 */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">
+                    수량 / 단위
+                  </label>
+                  <div className="flex items-center justify-between gap-1.5 bg-gray-50 p-1 rounded-xl border border-gray-100 h-[52px]">
+                    <button
+                      onClick={() => adjustQuantity(-0.5)}
+                      className="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm text-orange-500 font-bold hover:bg-orange-500 hover:text-white transition-all"
+                    >
+                      -
+                    </button>
+                    <div className="flex-1 text-center font-black text-lg text-gray-700">
+                      {editingItem.quantity}{" "}
+                      <span className="text-sm font-normal text-gray-400">
+                        {editingItem.unit}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => adjustQuantity(0.5)}
+                      className="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm text-orange-500 font-bold hover:bg-orange-500 hover:text-white transition-all"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* 유통기한 */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">
+                    유통기한
+                  </label>
+                  <input
+                    type="date"
+                    value={
+                      editingItem.expiryDate
+                        ? new Date(editingItem.expiryDate)
+                            .toISOString()
+                            .split("T")[0]
+                        : ""
+                    }
+                    onChange={(e) =>
+                      setEditingItem({
+                        ...editingItem,
+                        expiryDate: new Date(e.target.value),
+                      })
+                    }
+                    className="w-full px-4 h-[52px] py-3.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* 메모 - 한 줄 */}
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">
+                  메모
+                </label>
+                <textarea
+                  placeholder="보관 방법이나 유의사항을 적어주세요."
+                  value={editingItem.memo || ""}
+                  onChange={(e) =>
+                    setEditingItem({ ...editingItem, memo: e.target.value })
+                  }
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none h-20 resize-none text-sm leading-relaxed"
+                />
+              </div>
+            </div>
+
+            {/* 모달 푸터 - 세련된 버튼 배치 */}
+            <div className="p-7 pt-0 flex flex-col items-center gap-2">
+              <div className="flex w-full gap-3">
+                <button
+                  onClick={() => setEditingItem(null)}
+                  className="flex-1 py-3.5 bg-gray-100 text-gray-500 font-bold rounded-xl hover:bg-gray-200"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  className="flex-1 py-3.5 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition-all shadow-md shadow-orange-100"
+                >
+                  저장하기
+                </button>
+              </div>
+
+              <button
+                onClick={() =>
+                  deleteIngredient(editingItem.id || editingItem._id)
+                }
+                className="py-2.5 text-xs font-semibold text-gray-400 hover:text-red-500 transition-colors"
+              >
+                냉장고에서 이 재료 삭제하기
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -652,19 +727,14 @@ function NavItem({
 }) {
   return (
     <div
-      style={{
-        textAlign: "center",
-        cursor: "pointer",
-        opacity: active ? 1 : 0.4,
-      }}
+      className={cn(
+        "text-center cursor-pointer transition-opacity",
+        active ? "opacity-100" : "opacity-40",
+      )}
     >
-      <div style={{ fontSize: "20px" }}>{icon}</div>
+      <div className="text-[20px]">{icon}</div>
       <div
-        style={{
-          fontSize: "10px",
-          fontWeight: active ? "800" : "500",
-          marginTop: "4px",
-        }}
+        className={cn("text-[10px] mt-1", active ? "font-[800]" : "font-[500]")}
       >
         {label}
       </div>

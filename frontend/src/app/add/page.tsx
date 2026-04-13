@@ -1,14 +1,25 @@
 "use client";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function AddIngredientPage() {
+  // --- 기존 상태 유지 및 추가 필드 ---
   const [name, setName] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const [unit, setUnit] = useState("개");
   const [expiryDate, setExpiryDate] = useState("");
+  const [memo, setMemo] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  // 수량 조절 함수
+  const adjustQuantity = (amount: number) => {
+    setQuantity((prev) => Math.max(0, prev + amount));
+  };
+
+  // --- 기존 handleSubmit 로직 (누락 없음) ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !expiryDate)
@@ -19,13 +30,12 @@ export default function AddIngredientPage() {
       const res = await fetch("/api/ingredients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, expiryDate }),
+        // 수정된 스키마에 맞춰 모든 데이터 전송
+        body: JSON.stringify({ name, quantity, unit, expiryDate, memo }),
       });
 
       if (res.ok) {
-        // 1. 서버 데이터를 다시 불러오라고 신호를 보냄
         router.refresh();
-        // 2. 잠시 후 메인으로 이동 (DB 동기화 시간 확보)
         setTimeout(() => {
           router.push("/");
         }, 100);
@@ -40,67 +50,32 @@ export default function AddIngredientPage() {
   };
 
   return (
-    <div
-      style={{
-        padding: "40px 20px",
-        fontFamily:
-          "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-        maxWidth: "500px",
-        margin: "0 auto",
-        minHeight: "100vh",
-        backgroundColor: "#fcfcfc",
-      }}
-    >
+    <div className="min-h-screen bg-[#fcfcfc] p-6 flex flex-col items-center font-sans">
       {/* 뒤로가기 버튼 */}
-      <Link
-        href="/"
-        style={{
-          display: "inline-block",
-          marginBottom: "20px",
-          color: "#6b7280",
-          textDecoration: "none",
-          fontSize: "14px",
-          fontWeight: "600",
-        }}
-      >
-        ← 돌아가기
-      </Link>
-
-      <div
-        style={{
-          backgroundColor: "white",
-          padding: "30px",
-          borderRadius: "20px",
-          boxShadow: "0 10px 25px rgba(0,0,0,0.05)",
-          border: "1px solid #f3f4f6",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: "24px",
-            fontWeight: "800",
-            marginBottom: "25px",
-            color: "#111827",
-          }}
+      <div className="w-full max-w-md flex justify-start mb-6">
+        <Link
+          href="/"
+          className="text-gray-400 hover:text-gray-600 flex items-center gap-1 text-sm font-semibold transition-colors"
         >
-          새로운 재료 추가 🍎
-        </h1>
+          ← 돌아가기
+        </Link>
+      </div>
 
-        <form
-          onSubmit={handleSubmit}
-          style={{ display: "flex", flexDirection: "column", gap: "20px" }}
-        >
-          {/* 재료 이름 입력 */}
+      {/* 메인 입력 카드 */}
+      <div className="w-full max-w-md bg-white rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-gray-50 overflow-hidden">
+        {/* 카드 헤더 */}
+        <div className="bg-orange-50/70 px-8 py-6 border-b border-orange-100/60">
+          <h1 className="text-2xl font-black text-gray-800 flex items-center gap-3">
+            <span className="text-3xl">🍎</span>
+            새로운 재료 추가
+          </h1>
+        </div>
+
+        {/* 입력 폼 */}
+        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+          {/* 재료 이름 */}
           <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "700",
-                color: "#374151",
-                marginBottom: "8px",
-              }}
-            >
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">
               재료 이름
             </label>
             <input
@@ -108,82 +83,82 @@ export default function AddIngredientPage() {
               placeholder="예: 사과, 우유, 고기"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "12px 15px",
-                borderRadius: "10px",
-                border: "1px solid #d1d5db",
-                fontSize: "16px",
-                boxSizing: "border-box",
-                outline: "none",
-                transition: "border-color 0.2s",
-              }}
-              onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
-              onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
+              className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:bg-white outline-none transition-all font-semibold placeholder:text-gray-300"
             />
           </div>
 
-          {/* 유통기한 입력 */}
+          {/* 수량 및 유통기한 (컴팩트 그리드) */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">
+                수량 / 단위
+              </label>
+              <div className="flex items-center justify-between gap-1 bg-gray-50 p-1.5 rounded-2xl border border-gray-100 h-[58px]">
+                <button
+                  type="button"
+                  onClick={() => adjustQuantity(-0.5)}
+                  className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm text-orange-500 font-bold hover:bg-orange-500 hover:text-white transition-all"
+                >
+                  -
+                </button>
+                <div className="flex-1 text-center font-black text-gray-700">
+                  {quantity}{" "}
+                  <span className="text-[10px] font-normal text-gray-400">
+                    {unit}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => adjustQuantity(0.5)}
+                  className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm text-orange-500 font-bold hover:bg-orange-500 hover:text-white transition-all"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">
+                유통기한
+              </label>
+              <input
+                type="date"
+                value={expiryDate}
+                onChange={(e) => setExpiryDate(e.target.value)}
+                className="w-full px-4 h-[58px] bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none text-sm font-medium"
+              />
+            </div>
+          </div>
+
+          {/* 메모 */}
           <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "700",
-                color: "#374151",
-                marginBottom: "8px",
-              }}
-            >
-              유통기한
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">
+              보관 메모
             </label>
-            <input
-              type="date"
-              value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "12px 15px",
-                borderRadius: "10px",
-                border: "1px solid #d1d5db",
-                fontSize: "16px",
-                boxSizing: "border-box",
-                outline: "none",
-                fontFamily: "inherit",
-              }}
+            <textarea
+              placeholder="보관 방법이나 특이사항을 입력하세요."
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none h-24 resize-none text-sm leading-relaxed"
             />
           </div>
 
-          {/* 추가 버튼 */}
+          {/* 등록 버튼 */}
           <button
             type="submit"
             disabled={loading}
-            style={{
-              marginTop: "10px",
-              padding: "15px",
-              backgroundColor: loading ? "#ccc" : "#3b82f6",
-              color: "white",
-              border: "none",
-              borderRadius: "12px",
-              fontSize: "16px",
-              fontWeight: "700",
-              cursor: loading ? "default" : "pointer",
-              transition: "background-color 0.2s",
-              boxShadow: "0 4px 6px rgba(59, 130, 246, 0.2)",
-            }}
+            className={`w-full py-4 text-white font-black rounded-2xl transition-all shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] ${
+              loading
+                ? "bg-gray-300 shadow-none cursor-default"
+                : "bg-orange-500 hover:bg-orange-600 shadow-orange-200"
+            }`}
           >
             {loading ? "저장 중..." : "냉장고에 넣기 🧊"}
           </button>
         </form>
       </div>
 
-      <p
-        style={{
-          textAlign: "center",
-          marginTop: "20px",
-          color: "#9ca3af",
-          fontSize: "13px",
-        }}
-      >
+      <p className="mt-8 text-gray-400 text-[11px] font-medium tracking-tight">
         정확한 유통기한 입력은 신선한 요리의 시작입니다!
       </p>
     </div>

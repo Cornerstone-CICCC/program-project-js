@@ -35,10 +35,18 @@ export default function RecipePage() {
         }),
       });
 
-      if (!res.ok) throw new Error("API 요청 실패");
-
+      // ✅ 1. 데이터를 한 번만 읽어서 변수에 저장합니다.
       const data = await res.json();
+
+      // ✅ 2. 응답이 실패했을 경우 서버가 보낸 에러 메시지를 확인합니다.
+      if (!res.ok) {
+        console.error("서버 에러 상세:", data);
+        throw new Error(data.error || "API 요청 실패");
+      }
+
+      // ✅ 3. 이미 읽은 data 변수를 사용합니다.
       const fullText = data.suggestion;
+      if (!fullText) throw new Error("추천 요리가 없습니다.");
 
       const lines = fullText
         .split("\n")
@@ -49,9 +57,9 @@ export default function RecipePage() {
         title: lines[0] || "추천 레시피",
         steps: lines.slice(1),
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("레시피 로드 실패:", error);
-      alert("AI 레시피를 가져오지 못했습니다. API 키를 확인해주세요!");
+      alert(error.message || "AI 레시피를 가져오지 못했습니다.");
     } finally {
       setLoading(false);
     }
