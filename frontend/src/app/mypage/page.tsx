@@ -126,7 +126,10 @@ export default function MyPage() {
           title="알림 설정"
           description="유통기한 임박 알림"
         />
-        <MenuButton icon="🛒" title="나의 나눔 내역" />
+
+        <Link href="/mypage/shared">
+          <MenuButton icon="🛒" title="나의 나눔 내역" />
+        </Link>
 
         <div className="pt-6">
           <button
