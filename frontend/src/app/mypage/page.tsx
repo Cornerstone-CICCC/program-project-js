@@ -8,6 +8,27 @@ export default function MyPage() {
   const { data: session, status } = useSession();
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newLocation, setNewLocation] = useState("");
+
+  // 저장 함수
+  const handleLocationUpdate = async () => {
+    if (!newLocation.trim()) return alert("위치를 입력해주세요!");
+
+    const res = await fetch("/api/user/me", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" }, // 중요: JSON임을 알림
+      body: JSON.stringify({ location: newLocation }),
+    });
+
+    if (res.ok) {
+      const result = await res.json();
+      setUserData({ ...userData, location: result.location });
+      setIsModalOpen(false);
+    } else {
+      alert("저장에 실패했습니다.");
+    }
+  };
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -18,50 +39,22 @@ export default function MyPage() {
           setUserData(data);
         }
       } catch (err) {
-        console.error("유저 데이터 로딩 실패:", err);
+        console.error(err);
       } finally {
         setLoading(false);
       }
     };
 
-    if (status === "authenticated") {
-      fetchUserData();
-    }
+    if (status === "authenticated") fetchUserData();
   }, [status]);
 
-  // 1. 세션 로딩 중이거나 API 데이터 로딩 중일 때
   if (status === "loading" || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#fcfcfc]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin" />
-          <p className="text-gray-400 font-medium">정보를 불러오는 중...</p>
-        </div>
+        <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
-
-  // 통계 데이터 계산
-  const stats = [
-    {
-      label: "보관 재료",
-      value: userData?.ingredients?.length || 0,
-      unit: "개",
-      color: "text-blue-500",
-    },
-    {
-      label: "나눔 완료",
-      value: userData?.sharedItems?.length || 0,
-      unit: "건",
-      color: "text-orange-500",
-    },
-    {
-      label: "신뢰 등급",
-      value: userData?.rating?.toFixed(1) || "0.0",
-      unit: "★",
-      color: "text-yellow-500",
-    },
-  ];
 
   return (
     <div
@@ -71,21 +64,19 @@ export default function MyPage() {
         margin: "0 auto",
         backgroundColor: "#fcfcfc",
         minHeight: "100vh",
+        position: "relative", // 추가해주면 좋습니다
       }}
     >
-      {/* 프로필 헤더 */}
+      {/* 1. 프로필 헤더 */}
       <div className="bg-white px-6 py-8 rounded-[32px] shadow-[0_10px_30px_rgba(0,0,0,0.02)] border border-gray-100 mb-8">
         <div className="flex items-center gap-5 mb-6">
-          <div className="w-20 h-20 bg-orange-100 rounded-[28px] flex items-center justify-center text-3xl shadow-inner border-2 border-orange-50 overflow-hidden">
-            <span className="text-orange-500 font-black">
-              {session?.user?.name ? session.user.name[0] : "👤"}
-            </span>
+          <div className="w-20 h-20 bg-orange-100 rounded-[28px] flex items-center justify-center text-3xl shadow-inner border-2 border-orange-50 font-black text-orange-500">
+            {session?.user?.name ? session.user.name[0] : "👤"}
           </div>
-
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <h2 className="text-2xl font-black text-gray-800 tracking-tight">
-                {session?.user?.name || "사용자"}님
+                {session?.user?.name}님
               </h2>
               <span className="bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded-lg font-bold">
                 LV.{userData?.level || 1}
@@ -95,40 +86,28 @@ export default function MyPage() {
               {session?.user?.email}
             </p>
           </div>
-
-          <button className="p-3 bg-gray-50 rounded-2xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all">
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              viewBox="0 0 24 24"
-            >
-              <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
-          </button>
         </div>
 
-        {/* 통계 대시보드 (실제 데이터 반영됨) */}
-        <div className="grid grid-cols-3 gap-3">
-          {stats.map((stat, idx) => (
-            <div
-              key={idx}
-              className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100/50 text-center"
-            >
-              <div className="text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-tight">
-                {stat.label}
-              </div>
-              <div className={`text-lg font-black ${stat.color}`}>
-                {stat.value}
-                <span className="text-xs font-normal ml-0.5">{stat.unit}</span>
-              </div>
-            </div>
-          ))}
+        {/* 2. 통계 대시보드 (신뢰등급 제거 후 2컬럼 배치) */}
+        <div className="grid grid-cols-2 gap-4">
+          <StatCard
+            label="보관 재료"
+            value={userData?.ingredientCount || 0}
+            unit="개"
+            color="text-blue-500"
+            bgColor="bg-blue-50/30"
+          />
+          <StatCard
+            label="나눔 완료"
+            value={userData?.sharedCount || 0}
+            unit="건"
+            color="text-orange-500"
+            bgColor="bg-orange-50/30"
+          />
         </div>
       </div>
 
-      {/* 메뉴 리스트 */}
+      {/* 3. 메뉴 리스트 */}
       <div className="space-y-3">
         <h3 className="text-xs font-black text-gray-300 uppercase tracking-widest ml-2 mb-3">
           Account Settings
@@ -137,25 +116,24 @@ export default function MyPage() {
           icon="📍"
           title="나의 위치 설정"
           description={userData?.location || "위치를 설정해주세요"}
+          onClick={() => {
+            setNewLocation(userData?.location || "");
+            setIsModalOpen(true);
+          }}
+        />
+        <MenuButton
+          icon="🔔"
+          title="알림 설정"
+          description="유통기한 임박 알림"
         />
         <MenuButton icon="🛒" title="나의 나눔 내역" />
-        <MenuButton icon="⭐" title="즐겨찾는 레시피" />
 
         <div className="pt-6">
           <button
-            onClick={() => signOut({ callbackUrl: "/auth/login" })}
-            className="w-full flex items-center justify-center gap-2 p-4 bg-red-50 text-red-500 font-bold rounded-2xl hover:bg-red-100 transition-colors border border-red-100/50"
+            onClick={() => signOut()}
+            className="w-full flex items-center justify-center gap-2 p-4 bg-red-50 text-red-500 font-bold rounded-2xl hover:bg-red-100 transition-colors"
           >
-            <span>로그아웃</span>
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              viewBox="0 0 24 24"
-            >
-              <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
+            로그아웃
           </button>
         </div>
       </div>
@@ -203,6 +181,73 @@ export default function MyPage() {
           <NavItem icon="👤" label="My" active />
         </Link>
       </nav>
+
+      {/* 위치 설정 모달 */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4">
+          {/* 배경 블러 처리 */}
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setIsModalOpen(false)}
+          />
+
+          {/* 모달 콘텐츠 */}
+          <div className="relative bg-white w-full max-w-[500px] rounded-[32px] p-8 shadow-2xl animate-in fade-in slide-in-from-bottom-10 duration-300">
+            <div className="flex flex-col gap-6">
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold text-gray-800">
+                  나의 위치 설정 📍
+                </h3>
+                <p className="text-sm text-gray-400 font-medium">
+                  상세 주소(예: B동 302호)를 입력하면
+                  <br />
+                  이웃이 물건을 찾기 훨씬 수월해져요!
+                </p>
+              </div>
+
+              <input
+                type="text"
+                value={newLocation}
+                onChange={(e) => setNewLocation(e.target.value)}
+                placeholder="예: B동 302호"
+                className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-orange-500 focus:outline-none font-bold text-gray-700 transition-all"
+                autoFocus
+              />
+
+              <div className="flex gap-3 mt-2">
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 p-4 bg-gray-100 text-gray-500 font-bold rounded-2xl hover:bg-gray-200 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleLocationUpdate}
+                  className="flex-[2] p-4 bg-orange-500 text-white font-bold rounded-2xl hover:bg-orange-600 shadow-lg shadow-orange-200 transition-all"
+                >
+                  저장하기
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatCard({ label, value, unit, color, bgColor }: any) {
+  return (
+    <div
+      className={`${bgColor} p-5 rounded-2xl border border-gray-100/50 text-center`}
+    >
+      <div className="text-[11px] font-bold text-gray-400 uppercase mb-2 tracking-tight">
+        {label}
+      </div>
+      <div className={`text-2xl font-black ${color}`}>
+        {value}
+        <span className="text-sm font-normal ml-0.5 text-gray-400">{unit}</span>
+      </div>
     </div>
   );
 }
@@ -240,17 +285,12 @@ function NavItem({
 }
 
 // 🔘 메뉴 버튼
-function MenuButton({
-  icon,
-  title,
-  description,
-}: {
-  icon: string;
-  title: string;
-  description?: string;
-}) {
+function MenuButton({ icon, title, description, onClick }: any) {
   return (
-    <button className="w-full flex items-center gap-4 p-5 bg-white border border-gray-100 rounded-2xl hover:border-orange-100 hover:bg-orange-50/20 transition-all group shadow-sm shadow-black/[0.01]">
+    <button
+      onClick={onClick} // 클릭 이벤트 추가
+      className="w-full flex items-center gap-4 p-5 bg-white border border-gray-100 rounded-2xl hover:border-orange-100 hover:bg-orange-50/20 transition-all group"
+    >
       <span className="text-2xl">{icon}</span>
       <div className="text-left">
         <div className="font-bold text-gray-800 group-hover:text-orange-600 transition-colors text-sm">
