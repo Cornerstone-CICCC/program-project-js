@@ -3,6 +3,7 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react"; // 세션 정보 가져오기
 import toast from "react-hot-toast"; // ✅ 라이브러리 임포트
+import moment from "moment";
 
 export default function SharedItemDetailPage({
   params,
@@ -103,7 +104,7 @@ export default function SharedItemDetailPage({
     );
 
   const formattedExpiry = item.expiryDate
-    ? new Date(item.expiryDate).toLocaleDateString()
+    ? moment(new Date(item.expiryDate)).format("MMMM D, YYYY")
     : "No Info";
 
   return (

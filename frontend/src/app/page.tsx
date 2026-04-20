@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react"; // ✅ 추가
 import { cn } from "@/lib/utils"; // 위에서 만든 cn 함수
 import { toast } from "react-hot-toast"; // 라이브러리 설치 필요
+import moment from "moment";
 
 export default function HomePage() {
   const router = useRouter();
@@ -225,21 +226,52 @@ export default function HomePage() {
       </h1>
 
       {/* 액션 버튼 그룹 */}
+      {/* 액션 버튼 그룹 */}
       <div style={{ display: "flex", gap: "10px", marginBottom: "30px" }}>
+        {/* 1. 재료 추가 버튼 */}
         <Link
           href="/add"
           style={{
-            padding: "12px 20px",
-            backgroundColor: "#2563eb", // 더 전문적인 블루
-            color: "white",
-            borderRadius: "12px",
+            flex: 1, // 버튼 너비를 균등하게 배분
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "14px 20px",
+            backgroundColor: "#ffffff",
+            color: "#2563eb",
+            borderRadius: "16px",
             textDecoration: "none",
-            fontWeight: "bold",
-            boxShadow: "0 2px 4px rgba(37, 99, 235, 0.2)", // 블루 그림자
+            fontWeight: "800",
+            border: "2px solid #eff6ff",
+            boxShadow: "0 4px 12px rgba(37, 99, 235, 0.03)",
             fontSize: "14px",
+            transition: "all 0.2s ease",
           }}
         >
           + Add ingredient
+        </Link>
+
+        {/* 2. AI 큐레이션 버튼 (자동 생성 트리거) */}
+        <Link
+          href="/recipe?autoGenerate=true" // ✅ 쿼리 파라미터를 넘겨 자동 실행 신호를 줍니다.
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+            padding: "14px 20px",
+            backgroundColor: "#2563eb",
+            color: "white",
+            borderRadius: "16px",
+            textDecoration: "none",
+            fontWeight: "800",
+            boxShadow: "0 8px 16px rgba(37, 99, 235, 0.2)",
+            fontSize: "14px",
+            transition: "all 0.2s ease",
+          }}
+        >
+          <span>✨</span> Chef AI Curation
         </Link>
       </div>
 
@@ -333,7 +365,10 @@ export default function HomePage() {
                           fontWeight: "600",
                         }}
                       >
-                        Exp: {expiryDate.toLocaleDateString()}
+                        Exp:{" "}
+                        {moment(new Date(item.expiryDate)).format(
+                          "MMMM D, YYYY",
+                        )}
                       </div>
                     </div>
                   </div>

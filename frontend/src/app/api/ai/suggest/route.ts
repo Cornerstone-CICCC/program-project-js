@@ -14,14 +14,9 @@ export async function POST(req: Request) {
       3. Focus on a gourmet, high-end culinary perspective.
     `;
 
-    // 🔍 1. 모델을 가져올 때 await를 붙여서 Promise를 해결합니다.
-    const geminiModel = await ai.models.get({
-      model: "gemini-3-flash-preview",
-    });
-
     // 🔍 2. 이제 geminiModel에서 generateContent를 호출할 수 있습니다.
     const result = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.1-flash-lite-preview",
       contents: [{ role: "user", parts: [{ text: promptText }] }],
     });
 
