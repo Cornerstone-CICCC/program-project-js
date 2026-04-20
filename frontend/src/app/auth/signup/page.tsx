@@ -31,9 +31,10 @@ export default function SignUpPage() {
     e.preventDefault();
 
     if (strength.score < 4) {
-      return alert(
-        "For security, please enter a stronger password! (Include uppercase, lowercase, numbers, and special characters)",
+      toast.error(
+        "For security, please use a stronger password! 🛡️ (Must include uppercase, numbers, and symbols)",
       );
+      return;
     }
 
     setLoading(true);

@@ -4,6 +4,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import toast from "react-hot-toast";
 
 export default function MyPage() {
   const { data: session, status } = useSession();
@@ -14,7 +15,10 @@ export default function MyPage() {
 
   // 저장 함수
   const handleLocationUpdate = async () => {
-    if (!newLocation.trim()) return alert("Please enter a location!");
+    if (!newLocation.trim()) {
+      toast.error("Please enter a location! 📍");
+      return;
+    }
 
     const res = await fetch("/api/user/me", {
       method: "PATCH",
@@ -27,7 +31,8 @@ export default function MyPage() {
       setUserData({ ...userData, location: result.location });
       setIsModalOpen(false);
     } else {
-      alert("Failed to save.");
+      // 3. 서버 에러 발생 시
+      toast.error("Failed to save location. Please try again.");
     }
   };
 
