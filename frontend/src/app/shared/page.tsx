@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { calculateDistance } from "@/utils/distance";
+import { cn } from "@/lib/utils";
 
 export default function SharedBoardPage() {
   const [items, setItems] = useState<any[]>([]);
@@ -60,112 +61,173 @@ export default function SharedBoardPage() {
     const matchesSearch = itemName
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
+
+    // ✅ 해결책: 데이터의 status와 비교할 때 대소문자 무시(toLowerCase) 처리를 넣어보세요.
     const matchesFilter =
-      activeFilter === "all" || item.status === activeFilter;
+      activeFilter === "all" ||
+      (item.status && item.status.toLowerCase() === activeFilter.toLowerCase());
+
     return matchesSearch && matchesFilter;
   });
 
   return (
     <div
       style={{
-        padding: "40px 20px 120px 20px",
+        padding: "40px 24px 120px 24px",
         fontFamily:
           "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
         maxWidth: "600px",
         margin: "0 auto",
-        color: "#333",
+        color: "#1f2937",
         backgroundColor: "#fcfcfc",
         minHeight: "100vh",
       }}
     >
-      {/* 헤더 */}
+      {/* 헤더: 더 볼드하고 세련된 스타일 */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          marginBottom: "25px",
-          gap: "12px",
+          marginBottom: "30px",
+          gap: "16px",
         }}
       >
         <Link
           href="/"
-          style={{ textDecoration: "none", fontSize: "24px", color: "#333" }}
+          style={{
+            textDecoration: "none",
+            fontSize: "20px",
+            color: "#9ca3af",
+            backgroundColor: "white",
+            width: "40px",
+            height: "40px",
+            borderRadius: "14px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            border: "1px solid #f3f4f6",
+          }}
         >
-          {" "}
-          ←{" "}
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
         </Link>
-        <h1 style={{ fontSize: "28px", fontWeight: "800", margin: 0 }}>
-          Shared Board
+        <h1
+          style={{
+            fontSize: "26px",
+            fontWeight: "900",
+            margin: 0,
+            letterSpacing: "-0.025em",
+          }}
+        >
+          Shared Board 🥦
         </h1>
       </div>
 
-      {/* 검색창 */}
-      <div style={{ position: "relative", marginBottom: "20px" }}>
+      {/* 검색창: 둥글고 그림자 있는 스타일 */}
+      <div style={{ position: "relative", marginBottom: "25px" }}>
         <span
           style={{
             position: "absolute",
-            left: "15px",
-            top: "13px",
-            color: "#9ca3af",
+            left: "18px",
+            top: "16px",
+            color: "#d1d5db",
+            fontSize: "18px",
           }}
         >
           🔍
         </span>
         <input
           type="text"
-          placeholder="Search items..."
+          placeholder="Search for ingredients..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{
             width: "100%",
-            padding: "14px 14px 14px 45px",
-            borderRadius: "16px",
-            border: "1px solid #f3f4f6",
+            padding: "16px 16px 16px 52px",
+            borderRadius: "22px",
+            border: "2px solid #f3f4f6",
+            backgroundColor: "white",
             outline: "none",
             boxSizing: "border-box",
+            fontSize: "15px",
+            fontWeight: "600",
+            transition: "all 0.2s ease",
           }}
         />
       </div>
 
-      {/* 필터 칩 */}
-      <div style={{ display: "flex", gap: "10px", marginBottom: "30px" }}>
-        {["all", "free", "pickup"].map((f) => (
+      {/* 필터 칩: 둥근 알약 스타일 */}
+      <div
+        style={{
+          display: "flex",
+          gap: "10px",
+          marginBottom: "32px",
+          overflowX: "auto",
+          paddingBottom: "5px",
+        }}
+      >
+        {["all", "free", "in-person"].map((f) => (
           <button
             key={f}
             onClick={() => setActiveFilter(f)}
             style={{
-              padding: "10px 16px",
-              borderRadius: "12px",
-              backgroundColor: activeFilter === f ? "#10b981" : "white",
-              color: activeFilter === f ? "white" : "#6b7280",
-              border: activeFilter === f ? "none" : "1px solid #f3f4f6",
-              fontWeight: "bold",
+              padding: "12px 20px",
+              borderRadius: "16px",
+              backgroundColor: activeFilter === f ? "#2563eb" : "white",
+              color: activeFilter === f ? "white" : "#2563eb",
+              border: "none",
+              boxShadow:
+                activeFilter === f
+                  ? "0 8px 16px rgba(249, 115, 22, 0.2)"
+                  : "0 2px 4px rgba(0,0,0,0.02)",
+              fontWeight: "800",
               fontSize: "13px",
               cursor: "pointer",
-              textTransform: "capitalize",
+              transition: "all 0.2s ease",
+              whiteSpace: "nowrap",
             }}
           >
-            {f === "all" ? "Available" : f}
+            {f === "all" ? "All Posts" : f === "free" ? "Free" : "In-Person"}
           </button>
         ))}
       </div>
 
-      {/* 나눔 그리드 */}
+      {/* 나눔 그리드: 카드 기반 디자인 */}
       {loading ? (
-        <div style={{ textAlign: "center", padding: "50px", color: "#9ca3af" }}>
-          Loading...
+        <div style={{ textAlign: "center", padding: "80px 0" }}>
+          <div
+            style={{
+              width: "32px",
+              height: "32px",
+              border: "4px solid #f97316",
+              borderTopColor: "transparent",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+              margin: "0 auto",
+            }}
+          />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       ) : (
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
-            gap: "15px",
+            gap: "20px",
           }}
         >
           {filteredItems.length > 0 ? (
             filteredItems.map((item) => {
-              // 거리 계산 (item.lat, item.lng 사용)
               const distanceAway =
                 item.lat && item.lng
                   ? calculateDistance(
@@ -174,7 +236,7 @@ export default function SharedBoardPage() {
                       item.lat,
                       item.lng,
                     )
-                  : "Location N/A";
+                  : "Location not available";
 
               return (
                 <Link
@@ -185,102 +247,147 @@ export default function SharedBoardPage() {
                   <div
                     style={{
                       backgroundColor: "white",
-                      padding: "15px",
-                      borderRadius: "20px",
+                      padding: "20px",
+                      borderRadius: "32px",
                       border: "1px solid #f3f4f6",
                       textAlign: "center",
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "center",
-                      transition: "transform 0.2s ease",
+                      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                      position: "relative",
+                      overflow: "hidden",
                     }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.transform = "scale(1.02)")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.transform = "scale(1)")
-                    }
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-5px)";
+                      e.currentTarget.style.boxShadow =
+                        "0 12px 24px rgba(0,0,0,0.04)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
                   >
+                    {/* 아이콘 배경 */}
                     <div
                       style={{
-                        fontSize: "40px",
+                        width: "60px",
+                        height: "60px",
                         marginBottom: "12px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        overflow: "hidden",
+                        borderRadius: "16px",
                         backgroundColor: "#f9fafb",
-                        width: "100%",
-                        borderRadius: "15px",
-                        padding: "15px 0",
+                        margin: "0 auto",
                       }}
                     >
-                      {item.name?.toLowerCase().includes("apple")
-                        ? "🍎"
-                        : item.name?.toLowerCase().includes("milk")
-                          ? "🥛"
-                          : "📦"}
+                      {/* ✅ DB에 저장된 imageUrl이 있는지 확인 */}
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover", // 비율에 맞춰 꽉 채움
+                          }}
+                        />
+                      ) : (
+                        /* ✅ 이미지가 없을 때만 기존 이모지 로직 작동 */
+                        <span style={{ fontSize: "30px" }}>📸</span>
+                      )}
                     </div>
+
+                    {/* 아이템 이름 */}
                     <div
                       style={{
-                        fontWeight: "700",
-                        fontSize: "15px",
-                        marginBottom: "4px",
+                        fontWeight: "800",
+                        fontSize: "16px",
+                        marginBottom: "6px",
+                        color: "#1f2937",
+                        width: "100%",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
                       }}
                     >
                       {item.name}
                     </div>
 
-                    {/* 📍 거리 표시 */}
+                    {/* 📍 거리 표시 - 포인트 컬러 강조 */}
                     <div
                       style={{
                         fontSize: "11px",
-                        color: "#10b981",
-                        fontWeight: "600",
-                        marginBottom: "8px",
+                        color: "#f97316",
+                        fontWeight: "800",
+                        marginBottom: "12px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "3px",
                       }}
                     >
-                      📍 {distanceAway} away
+                      <span style={{ fontSize: "14px" }}>📍</span>{" "}
+                      {distanceAway}
                     </div>
 
+                    {/* 상태 라벨 */}
                     <div
                       style={{
                         display: "inline-block",
                         fontSize: "10px",
-                        fontWeight: "800",
-                        padding: "3px 8px",
-                        borderRadius: "8px",
+                        fontWeight: "900",
+                        padding: "5px 12px",
+                        borderRadius: "10px",
                         backgroundColor:
-                          item.status === "free" ? "#dcfce7" : "#dbeafe",
+                          item.status === "free" ? "#ecfdf5" : "#eff6ff",
                         color: item.status === "free" ? "#059669" : "#2563eb",
                         textTransform: "uppercase",
-                        marginBottom: "12px",
+                        marginBottom: "16px",
+                        letterSpacing: "0.05em",
                       }}
                     >
                       {item.status}
                     </div>
 
+                    {/* 작성자 정보 영역 */}
                     <div
                       style={{
                         width: "100%",
                         borderTop: "1px solid #f9fafb",
-                        paddingTop: "10px",
+                        paddingTop: "12px",
                         marginTop: "auto",
                         display: "flex",
                         justifyContent: "center",
                         alignItems: "center",
-                        gap: "5px",
+                        gap: "6px",
                       }}
                     >
                       <div
                         style={{
-                          width: "14px",
-                          height: "14px",
+                          width: "18px",
+                          height: "18px",
                           borderRadius: "50%",
-                          backgroundColor: "#e5e7eb",
+                          backgroundColor: "#f3f4f6",
+                          fontSize: "10px",
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
                         }}
-                      ></div>
-                      {/* ⬇️ 이 부분을 아래와 같이 수정하세요 */}
-                      <span style={{ fontSize: "11px", color: "#9ca3af" }}>
+                      >
+                        👤
+                      </div>
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          color: "#9ca3af",
+                          fontWeight: "700",
+                        }}
+                      >
                         {item.owner
-                          ? `${item.owner.firstName} ${item.owner.lastName}`
-                          : "Unknown"}
+                          ? `${item.owner.firstName}${item.owner.lastName}`
+                          : "neighbor"}
                       </span>
                     </div>
                   </div>
@@ -292,85 +399,136 @@ export default function SharedBoardPage() {
               style={{
                 gridColumn: "span 2",
                 textAlign: "center",
-                padding: "60px 0",
-                color: "#9ca3af",
+                padding: "100px 0",
+                color: "#d1d5db",
               }}
             >
-              No items found.
+              <div style={{ fontSize: "50px", marginBottom: "20px" }}>🏜️</div>
+              <p style={{ fontWeight: "800", color: "#9ca3af" }}>
+                No results found.
+              </p>
             </div>
           )}
         </div>
       )}
 
-      {/* 플로팅 버튼 */}
       <Link
         href="/shared/add"
         style={{
           position: "fixed",
           bottom: "100px",
-          right: "25px",
-          width: "60px",
-          height: "60px",
-          borderRadius: "30px",
-          backgroundColor: "#10b981",
+          right: "30px",
+          width: "66px",
+          height: "66px",
+          borderRadius: "24px",
+          backgroundColor: "#2563eb",
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
           color: "white",
-          fontSize: "30px",
+          fontSize: "32px",
           textDecoration: "none",
-          boxShadow: "0 10px 20px rgba(16, 185, 129, 0.3)",
+          boxShadow: "0 15px 30px rgba(249, 115, 22, 0.35)",
           zIndex: 1000,
+          transition: "transform 0.2s ease",
         }}
+        onMouseEnter={(e) =>
+          (e.currentTarget.style.transform = "scale(1.1) rotate(90deg)")
+        }
+        onMouseLeave={(e) =>
+          (e.currentTarget.style.transform = "scale(1) rotate(0deg)")
+        }
       >
-        {" "}
-        +{" "}
+        <svg
+          width="28"
+          height="28"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
       </Link>
 
-      {/* 네비게이션 */}
+      {/* 하단 내비게이션 바 */}
       <nav
         style={{
           position: "fixed",
           bottom: 0,
           left: 0,
           right: 0,
-          height: "85px",
+          height: "80px",
           backgroundColor: "rgba(255,255,255,0.9)",
           backdropFilter: "blur(10px)",
           borderTop: "1px solid #f3f4f6",
           display: "flex",
           justifyContent: "space-around",
           alignItems: "center",
-          paddingBottom: "15px",
+          paddingBottom: "10px",
           zIndex: 100,
         }}
       >
-        <Link
-          href="/"
-          style={{ textDecoration: "none", color: "inherit", opacity: 0.4 }}
-        >
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "20px" }}>🏠</div>
-            <div style={{ fontSize: "10px" }}>Home</div>
-          </div>
+        <Link href="/" style={{ textDecoration: "none", color: "inherit" }}>
+          <NavItem icon="🏠" label="Home" />
         </Link>
-        <div style={{ textAlign: "center", opacity: 0.4 }}>
-          <div style={{ fontSize: "20px" }}>🍳</div>
-          <div style={{ fontSize: "10px" }}>Recipe</div>
-        </div>
-        <div style={{ textAlign: "center", color: "#10b981" }}>
-          <div style={{ fontSize: "20px" }}>🤝</div>
-          <div style={{ fontSize: "10px", fontWeight: "800" }}>Share</div>
-        </div>
-        <div style={{ textAlign: "center", opacity: 0.4 }}>
-          <div style={{ fontSize: "20px" }}>💬</div>
-          <div style={{ fontSize: "10px" }}>Chat</div>
-        </div>
-        <div style={{ textAlign: "center", opacity: 0.4 }}>
-          <div style={{ fontSize: "20px" }}>👤</div>
-          <div style={{ fontSize: "10px" }}>My Page</div>
-        </div>
+        <Link
+          href="/recipe"
+          style={{ textDecoration: "none", color: "inherit" }}
+        >
+          <NavItem icon="🍳" label="Recipe" />
+        </Link>
+        <Link
+          href="/shared"
+          style={{ textDecoration: "none", color: "inherit" }}
+        >
+          <NavItem icon="🤝" label="Share" active />
+        </Link>
+        <Link href="/chat" style={{ textDecoration: "none", color: "inherit" }}>
+          <NavItem icon="💬" label="Chat" />
+        </Link>
+        <Link
+          href="/mypage"
+          style={{ textDecoration: "none", color: "inherit" }}
+        >
+          <NavItem icon="👤" label="My" />
+        </Link>
       </nav>
+    </div>
+  );
+}
+
+// 🏠 내비게이션 아이템 함수형 컴포넌트 (파일 하단에 포함)
+function NavItem({
+  icon,
+  label,
+  active = false,
+}: {
+  icon: string;
+  label: string;
+  active?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        textAlign: "center",
+        cursor: "pointer",
+        opacity: active ? 1 : 0.4,
+      }}
+    >
+      <div style={{ fontSize: "20px" }}>{icon}</div>
+      <div
+        style={{
+          fontSize: "10px",
+          fontWeight: active ? "800" : "500",
+          marginTop: "4px",
+        }}
+      >
+        {label}
+      </div>
     </div>
   );
 }

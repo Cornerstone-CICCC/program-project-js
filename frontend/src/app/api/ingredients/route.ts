@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -9,20 +9,20 @@ export async function GET() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "로그인이 필요합니다." },
+        { error: "Login is required." },
         { status: 401 },
       );
     }
 
     // 내 재료만 가져오도록 필터링 추가
-    const ingredients = await db.ingredient.findMany({
+    const ingredients = await prisma.ingredient.findMany({
       where: { userId: session.user.id },
       orderBy: { expiryDate: "asc" },
     });
 
     return NextResponse.json(ingredients);
   } catch (error) {
-    return NextResponse.json({ error: "데이터 로드 실패" }, { status: 500 });
+    return NextResponse.json({ error: "Failed Data load" }, { status: 500 });
   }
 }
 
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "권한 없음" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     } = body;
 
     // ✅ 핵심: 생성할 때 userId를 반드시 넣어줘야 나중에 수정/삭제가 가능합니다.
-    const newIngredient = await db.ingredient.create({
+    const newIngredient = await prisma.ingredient.create({
       data: {
         name,
         expiryDate: new Date(expiryDate),
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
         category: category || "etc",
         location: location || "fridge",
         quantity: quantity ? parseFloat(quantity.toString()) : 1.0,
-        unit: unit || "개",
+        unit: unit || "unit",
         emoji: emoji || "📦",
         memo: memo || "",
       },

@@ -51,7 +51,7 @@ export async function PATCH(req: Request) {
     // 1. 세션 확인 (로그인 여부)
     if (!session?.user?.email) {
       return NextResponse.json(
-        { error: "인증이 필요합니다." },
+        { error: "Authentication is required." },
         { status: 401 },
       );
     }
@@ -62,7 +62,7 @@ export async function PATCH(req: Request) {
 
     if (typeof location !== "string") {
       return NextResponse.json(
-        { error: "유효하지 않은 위치 데이터입니다." },
+        { error: "Invalid location data." },
         { status: 400 },
       );
     }
@@ -74,13 +74,13 @@ export async function PATCH(req: Request) {
     });
 
     return NextResponse.json({
-      message: "위치가 성공적으로 업데이트되었습니다.",
+      message: "Location updated successfully.",
       location: updatedUser.location,
     });
   } catch (error) {
-    console.error("위치 업데이트 에러:", error);
+    console.error("Location update error:", error);
     return NextResponse.json(
-      { error: "서버 내부 에러가 발생했습니다." },
+      { error: "Internal server error occurred." },
       { status: 500 },
     );
   }

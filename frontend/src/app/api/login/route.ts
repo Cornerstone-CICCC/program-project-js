@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 export async function POST(request: Request) {
   try {
@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     // 1. 데이터 입력 확인
     if (!email || !password) {
       return NextResponse.json(
-        { error: "이메일과 비밀번호를 모두 입력해주세요." },
+        { error: "Please enter both email and password." },
         { status: 400 },
       );
     }
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     // 3. 사용자가 존재하지 않는 경우
     if (!user) {
       return NextResponse.json(
-        { error: "존재하지 않는 계정입니다." },
+        { error: "Account does not exist." },
         { status: 401 },
       );
     }
@@ -32,18 +32,18 @@ export async function POST(request: Request) {
 
     if (!isPasswordValid) {
       return NextResponse.json(
-        { error: "비밀번호가 일치하지 않습니다." },
+        { error: "Password does not match." },
         { status: 401 },
       );
     }
 
     // 5. 로그인 성공 및 쿠키 생성 (핵심 수정 부분)
-    console.log(`✅ 로그인 성공: ${user.email}`);
+    console.log(`✅ Success Login: ${user.email}`);
 
     // 응답 객체를 먼저 생성합니다.
     const response = NextResponse.json(
       {
-        message: "로그인 성공!",
+        message: "Success Login!",
         user: {
           id: user.id,
           email: user.email,
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Login API Error:", error);
     return NextResponse.json(
-      { error: "로그인 처리 중 서버 오류가 발생했습니다." },
+      { error: "A server error occurred during login." },
       { status: 500 },
     );
   }

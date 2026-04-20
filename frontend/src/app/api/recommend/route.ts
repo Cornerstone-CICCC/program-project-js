@@ -1,9 +1,9 @@
-import { db } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const ingredients = await db.ingredient.findMany();
+    const ingredients = await prisma.ingredient.findMany();
     const ingredientNames = ingredients.map((i) => i.name).join(", ");
 
     if (ingredients.length === 0) {

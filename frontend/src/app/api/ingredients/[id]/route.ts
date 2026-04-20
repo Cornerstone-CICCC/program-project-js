@@ -12,7 +12,10 @@ export async function PATCH(
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id)
-      return NextResponse.json({ error: "인증 실패" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Authentication failed" },
+        { status: 401 },
+      );
 
     const { id } = await params;
     const body = await request.json();
@@ -37,14 +40,14 @@ export async function PATCH(
 
     if (result.count === 0) {
       return NextResponse.json(
-        { error: "아이템을 찾을 수 없거나 수정 권한이 없습니다." },
+        { error: "Item not found or you do not have permission to edit it." },
         { status: 404 },
       );
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: "서버 오류" }, { status: 500 });
+    return NextResponse.json({ error: "Server Error" }, { status: 500 });
   }
 }
 
@@ -55,7 +58,10 @@ export async function DELETE(
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id)
-      return NextResponse.json({ error: "인증 실패" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Authentication failed" },
+        { status: 401 },
+      );
 
     const { id } = await params;
 
@@ -68,13 +74,13 @@ export async function DELETE(
 
     if (result.count === 0) {
       return NextResponse.json(
-        { error: "삭제할 아이템이 없거나 권한이 없습니다." },
+        { error: "No item found to delete or you don't have permission." },
         { status: 404 },
       );
     }
 
-    return NextResponse.json({ message: "삭제 완료" });
+    return NextResponse.json({ message: "Delete completed" });
   } catch (error) {
-    return NextResponse.json({ error: "서버 오류" }, { status: 500 });
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

@@ -8,7 +8,7 @@ export default function AddIngredientPage() {
   // --- 기존 상태 유지 및 추가 필드 ---
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [unit, setUnit] = useState("개");
+  const [unit, setUnit] = useState("unit");
   const [expiryDate, setExpiryDate] = useState("");
   const [memo, setMemo] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,7 +23,7 @@ export default function AddIngredientPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !expiryDate)
-      return alert("재료 이름과 유통기한을 입력해주세요!");
+      return alert("Please enter the ingredient name and expiration date!");
 
     setLoading(true);
     try {
@@ -40,7 +40,7 @@ export default function AddIngredientPage() {
           router.push("/");
         }, 100);
       } else {
-        alert("저장에 실패했습니다.");
+        alert("Failed to save.");
       }
     } catch (err) {
       console.error(err);
@@ -57,7 +57,7 @@ export default function AddIngredientPage() {
           href="/"
           className="text-gray-400 hover:text-gray-600 flex items-center gap-1 text-sm font-semibold transition-colors"
         >
-          ← 돌아가기
+          ← Go back
         </Link>
       </div>
 
@@ -67,7 +67,7 @@ export default function AddIngredientPage() {
         <div className="bg-orange-50/70 px-8 py-6 border-b border-orange-100/60">
           <h1 className="text-2xl font-black text-gray-800 flex items-center gap-3">
             <span className="text-3xl">🍎</span>
-            새로운 재료 추가
+            Add New Ingredient
           </h1>
         </div>
 
@@ -76,11 +76,11 @@ export default function AddIngredientPage() {
           {/* 재료 이름 */}
           <div>
             <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">
-              재료 이름
+              Ingredient Name
             </label>
             <input
               type="text"
-              placeholder="예: 사과, 우유, 고기"
+              placeholder="e.g., apple, milk, meat"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:bg-white outline-none transition-all font-semibold placeholder:text-gray-300"
@@ -91,7 +91,7 @@ export default function AddIngredientPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">
-                수량 / 단위
+                Quantity / Unit
               </label>
               <div className="flex items-center justify-between gap-1 bg-gray-50 p-1.5 rounded-2xl border border-gray-100 h-[58px]">
                 <button
@@ -119,7 +119,7 @@ export default function AddIngredientPage() {
 
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">
-                유통기한
+                Expiration Date
               </label>
               <input
                 type="date"
@@ -133,10 +133,10 @@ export default function AddIngredientPage() {
           {/* 메모 */}
           <div>
             <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">
-              보관 메모
+              Storage Memo
             </label>
             <textarea
-              placeholder="보관 방법이나 특이사항을 입력하세요."
+              placeholder="Enter storage instructions or special notes."
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
               className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none h-24 resize-none text-sm leading-relaxed"
@@ -153,13 +153,13 @@ export default function AddIngredientPage() {
                 : "bg-orange-500 hover:bg-orange-600 shadow-orange-200"
             }`}
           >
-            {loading ? "저장 중..." : "냉장고에 넣기 🧊"}
+            {loading ? "Saving..." : "Add to Fridge 🧊"}
           </button>
         </form>
       </div>
 
       <p className="mt-8 text-gray-400 text-[11px] font-medium tracking-tight">
-        정확한 유통기한 입력은 신선한 요리의 시작입니다!
+        Accurate expiration date entry is the start of fresh cooking!
       </p>
     </div>
   );

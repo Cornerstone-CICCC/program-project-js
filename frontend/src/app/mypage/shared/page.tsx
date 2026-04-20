@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link"; // <--- 이 줄을 추가하세요!
 
 export default function MySharedHistoryPage() {
   const router = useRouter();
@@ -13,7 +14,7 @@ export default function MySharedHistoryPage() {
 
   // 수정 저장 함수
   const handleUpdateInfo = async () => {
-    if (!editName.trim()) return alert("이름을 입력해주세요.");
+    if (!editName.trim()) return alert("Please enter a name.");
 
     const res = await fetch(`/api/user/shared/${editingItem.id}`, {
       method: "PATCH",
@@ -53,7 +54,7 @@ export default function MySharedHistoryPage() {
 
   // 2. 삭제 함수
   const deleteItem = async (id: string) => {
-    if (!confirm("정말 이 게시글을 삭제할까요?")) return;
+    if (!confirm("Are you sure you want to delete this post?")) return;
 
     const res = await fetch(`/api/user/shared/${id}`, { method: "DELETE" });
     if (res.ok) {
@@ -70,7 +71,7 @@ export default function MySharedHistoryPage() {
           setItems(data);
         }
       } catch (error) {
-        console.error("데이터 로드 실패:", error);
+        console.error("Failed data load:", error);
       } finally {
         setLoading(false);
       }
@@ -101,14 +102,14 @@ export default function MySharedHistoryPage() {
           </svg>
         </button>
         <h1 className="ml-2 text-xl font-black text-gray-800 tracking-tight">
-          나의 나눔 관리
+          My Shared Items
         </h1>
       </div>
 
       {/* 안내 문구 */}
       <div className="px-6 mb-6">
         <p className="text-sm text-gray-400 font-medium">
-          내가 이웃들에게 공유한 소중한 재료들이에요.
+          These are the ingredients you’ve shared with your neighbors.
         </p>
       </div>
 
@@ -121,7 +122,7 @@ export default function MySharedHistoryPage() {
         ) : items.length === 0 ? (
           <div className="py-20 text-center bg-white rounded-[32px] border-2 border-dashed border-gray-100">
             <span className="text-4xl block mb-4">🌱</span>
-            <p className="text-gray-400 font-bold">아직 올린 나눔이 없어요.</p>
+            <p className="text-gray-400 font-bold">No shared items yet.</p>
           </div>
         ) : (
           // 💡 여기서 {items.map ... } 이 아니라 (items.map ... ) 으로 시작해야 합니다.
@@ -182,7 +183,8 @@ export default function MySharedHistoryPage() {
                     </div>
                   </div>
                   <p className="text-xs text-gray-400 mt-1">
-                    {new Date(item.createdAt).toLocaleDateString()} 등록
+                    {new Date(item.createdAt).toLocaleDateString()} Registered
+                    on
                   </p>
                 </div>
               </div>
@@ -198,12 +200,18 @@ export default function MySharedHistoryPage() {
                   }`}
                 >
                   {item.availabilityStatus === "available"
-                    ? "나눔 완료하기"
-                    : "다시 나눔하기"}
+                    ? "Mark as Shared"
+                    : "Share Again"}
                 </button>
                 <button className="px-4 py-3 bg-gray-50 text-gray-400 rounded-xl text-xs font-bold hover:bg-gray-100 transition-all">
-                  채팅 확인
+                  View Chat
                 </button>
+                <Link
+                  href={`/chat?itemId=${item.id}`}
+                  className="px-4 py-3 bg-gray-50 text-gray-400 rounded-xl text-xs font-bold hover:bg-orange-50 hover:text-orange-500 transition-all text-center flex items-center justify-center"
+                >
+                  View Chat
+                </Link>
               </div>
             </div>
           ))

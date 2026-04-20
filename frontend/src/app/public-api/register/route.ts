@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 export async function POST(request: Request) {
+  console.log("🚀 회원가입 요청 서버 도착!");
   try {
     const { firstName, lastName, email, password } = await request.json();
 
     // 1. 데이터 누락 확인
     if (!firstName || !lastName || !email || !password) {
       return NextResponse.json(
-        { error: "모든 필드를 입력해주세요." },
+        { error: "Please fill in all fields." },
         { status: 400 },
       );
     }
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "비밀번호는 8자 이상이며 대문자, 소문자, 숫자, 특수문자를 모두 포함해야 합니다.",
+            "Password must be at least 8 characters and include uppercase letters, lowercase letters, numbers, and special characters.",
         },
         { status: 400 },
       );
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return NextResponse.json(
-        { error: "이미 가입된 이메일입니다." },
+        { error: "Email is already registered." },
         { status: 400 },
       );
     }
@@ -53,17 +54,19 @@ export async function POST(request: Request) {
       },
     });
 
-    // 6. 로깅 (추후 Nodemailer 등 메일 발송 로직 추가 위치)
-    console.log(`✅ 회원가입 성공: ${newUser.email}. 인증 메일을 보냅니다.`);
+    // 6. Logging (future place to add email sending logic like Nodemailer)
+    console.log(
+      `✅ Signup successful: ${newUser.email}. Sending verification email.`,
+    );
 
     return NextResponse.json(
-      { message: "회원가입 성공! 이메일을 확인해주세요." },
+      { message: "Signup successful! Please check your email." },
       { status: 201 },
     );
   } catch (error) {
     console.error("Signup Error:", error);
     return NextResponse.json(
-      { error: "회원가입 도중 서버 오류가 발생했습니다." },
+      { error: "A server error occurred during signup." },
       { status: 500 },
     );
   }

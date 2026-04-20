@@ -23,14 +23,14 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        alert("이메일 또는 비밀번호가 올바르지 않습니다.");
+        alert("Invalid email or password.");
       } else {
         router.push("/");
         router.refresh();
       }
     } catch (error) {
-      console.error("로그인 중 에러 발생:", error);
-      alert("서버 연결에 실패했습니다.");
+      console.error("Login error occurred:", error);
+      alert("Failed to connect to server.");
     } finally {
       setIsLoading(false);
     }
@@ -51,7 +51,7 @@ export default function LoginPage() {
             letterSpacing: "-0.5px",
           }}
         >
-          반가워요!
+          Welcome!
         </h1>
         <p
           style={{
@@ -61,9 +61,9 @@ export default function LoginPage() {
             lineHeight: "1.5",
           }}
         >
-          나만의 냉장고를 관리하고
+          Manage your own fridge
           <br />
-          이웃과 신선한 음식을 나눠보세요.
+          and share fresh food with your neighbors.
         </p>
       </div>
 
@@ -75,7 +75,7 @@ export default function LoginPage() {
         <div style={inputGroupStyle}>
           <input
             type="email"
-            placeholder="이메일 주소"
+            placeholder="email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -85,7 +85,7 @@ export default function LoginPage() {
         <div style={inputGroupStyle}>
           <input
             type="password"
-            placeholder="비밀번호"
+            placeholder="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -102,15 +102,15 @@ export default function LoginPage() {
             transform: isLoading ? "scale(0.98)" : "scale(1)",
           }}
         >
-          {isLoading ? "로그인 중..." : "로그인하기"}
+          {isLoading ? "Logging in..." : "Log in"}
         </button>
       </form>
 
       {/* 하단 링크 */}
       <div style={footerStyle}>
-        처음이신가요?{" "}
+        New here?{" "}
         <Link href="/auth/signup" style={linkStyle}>
-          회원가입하기
+          Sign up
         </Link>
       </div>
     </div>

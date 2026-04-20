@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { checkPasswordStrength } from "@/utils/passwordCheck"; // 아까 만든 유틸 함수
+import toast from "react-hot-toast"; // ✅ 라이브러리 임포트
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -28,29 +29,38 @@ export default function SignUpPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (strength.score < 4) {
       return alert(
-        "보안을 위해 더 강력한 비밀번호를 입력해주세요! (대소문자, 숫자, 특수문자 포함)",
+        "For security, please enter a stronger password! (Include uppercase, lowercase, numbers, and special characters)",
       );
     }
 
     setLoading(true);
     try {
-      const res = await fetch("/api/signup", {
+      const res = await fetch("/public-api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
 
       if (res.ok) {
-        alert("회원가입 성공! 이메일 인증 후 로그인해주세요. 📧");
+        // ✅ Success toast: Disappears automatically
+        toast.success(
+          "Signup successful! Please verify your email before logging in. 📧",
+          {
+            duration: 4000,
+          },
+        );
         router.push("/auth/login");
       } else {
         const data = await res.json();
-        alert(data.error || "회원가입 실패");
+        // ✅ Error toast: Displays the specific server error
+        toast.error(data.error || "Signup failed. Please try again.");
       }
     } catch (err) {
-      alert("오류가 발생했습니다.");
+      // ✅ Catch-all for network or unexpected errors
+      toast.error("An unexpected error occurred.");
     } finally {
       setLoading(false);
     }
@@ -64,7 +74,7 @@ export default function SignUpPage() {
             Join Us! 🥬
           </h1>
           <p style={{ color: "#666", marginTop: "8px" }}>
-            나눔의 즐거움, 지금 시작해보세요.
+            Start enjoying the joy of sharing today.
           </p>
         </div>
 
@@ -78,7 +88,6 @@ export default function SignUpPage() {
               <label style={labelStyle}>First Name</label>
               <input
                 required
-                placeholder="길동"
                 style={inputStyle}
                 onChange={(e) =>
                   setFormData({ ...formData, firstName: e.target.value })
@@ -89,7 +98,6 @@ export default function SignUpPage() {
               <label style={labelStyle}>Last Name</label>
               <input
                 required
-                placeholder="홍"
                 style={inputStyle}
                 onChange={(e) =>
                   setFormData({ ...formData, lastName: e.target.value })

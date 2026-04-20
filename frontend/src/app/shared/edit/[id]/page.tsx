@@ -1,147 +1,101 @@
 "use client";
-import { useState } from "react";
+
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { useSession } from "next-auth/react";
-import { toast } from "react-hot-toast";
+import toast from "react-hot-toast";
 
-export default function AddSharedItemPage() {
-  const router = useRouter(); // 👈 여기서 한 번만 선언!
-  const { data: session } = useSession();
-  const today = new Date().toISOString().split("T")[0];
+export default function EditSharedItemPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const router = useRouter();
+  const { id } = use(params);
 
-  // 1. 모든 입력값을 하나의 formData로 통합 (중복 선언 삭제)
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
     name: "",
-    status: "free",
+    description: "",
+    status: "free", // 나눔 방식 (무료나눔: free / 직거래: pickup)
     quantity: "",
     expiryDate: "",
-    description: "",
+    imageUrl: "",
   });
 
-  const [loading, setLoading] = useState(false);
+  // 1. 기존 데이터 불러오기
+  useEffect(() => {
+    const fetchItem = async () => {
+      try {
+        const res = await fetch(`/api/shared/${id}`);
+        if (!res.ok) throw new Error();
 
-  // 📸 이미지 관련 상태
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>("");
+        const data = await res.json();
+
+        setFormData({
+          name: data.name || "",
+          description: data.description || "",
+          status: data.status ? data.status.toLowerCase() : "free",
+          quantity: data.quantity || "",
+          expiryDate: data.expiryDate
+            ? new Date(data.expiryDate).toISOString().split("T")[0]
+            : "",
+          imageUrl: data.imageUrl || "",
+        });
+        setPreviewUrl(data.imageUrl || null);
+      } catch (error) {
+        toast.error("Failed to load information.");
+        router.back();
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchItem();
+  }, [id, router]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setImageFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
     }
   };
 
-  const uploadImageToCloudinary = async () => {
-    if (!imageFile) return null;
-    const cloudName = "dwc2isol3";
-    const uploadPreset = "ml_default";
-    const uploadData = new FormData();
-    uploadData.append("file", imageFile);
-    uploadData.append("upload_preset", uploadPreset);
-
-    try {
-      const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-        {
-          method: "POST",
-          body: uploadData,
-        },
-      );
-      const data = await res.json();
-      return data.secure_url;
-    } catch (error) {
-      console.error("Cloudinary Error:", error);
-      return null;
-    }
-  };
-
+  // 2. 수정 제출
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitting(true);
 
-    // 1. 기본 유효성 검사
-    if (!session) {
-      toast.error("Authentication required. Please login first!");
-      return;
-    }
+    const updatePromise = fetch(`/api/shared/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
 
-    if (!formData.name || !formData.expiryDate) {
-      toast.error("Please fill in all required fields!");
-      return;
-    }
+    toast.promise(updatePromise, {
+      loading: "Saving your changes...",
+      success: (res) => {
+        if (!res.ok) throw new Error();
+        setTimeout(() => {
+          router.push(`/shared/${id}`);
+          router.refresh();
+        }, 1000);
+        return "Changes saved successfully! 🍊";
+      },
+      error: "Failed to save changes.",
+    });
 
-    // 2. 위치 권한 및 정보 가져오기 (강제화)
-    if (!("geolocation" in navigator)) {
-      toast.error("Location services are not supported by your browser.");
-      return;
-    }
-
-    setLoading(true);
-
-    // Promise를 통해 위치 정보를 기다림
-    const getPosition = () => {
-      return new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true, // 더 정확한 위치 요청
-          timeout: 10000, // 10초 대기
-        });
-      });
-    };
-
-    try {
-      const position = await getPosition();
-      const { latitude, longitude } = position.coords;
-
-      // 3. 이미지 업로드 (위치 확인 후 진행하여 리소스 낭비 방지)
-      let uploadedImageUrl = "";
-      if (imageFile) {
-        uploadedImageUrl = await uploadImageToCloudinary();
-      }
-
-      // 4. 최종 서버 전송
-      const res = await fetch("/api/shared", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          quantity: Number(formData.quantity) || 1,
-          expiryDate: new Date(formData.expiryDate).toISOString(),
-          lat: latitude,
-          lng: longitude,
-          imageUrl: uploadedImageUrl,
-          category: "Food",
-        }),
-      });
-
-      if (res.ok) {
-        // ✅ 성공 알림
-        toast.success("Your giveaway has started with nearby neighbors! 🍎", {
-          duration: 3000, // 3초 동안 표시
-        });
-        router.push("/shared");
-      } else {
-        throw new Error("Failed to register on the server");
-      }
-    } catch (error: any) {
-      console.error("Error:", error);
-
-      // ✅ 에러 상세 처리 (Toast로 변경)
-      if (error.code === 1) {
-        // PERMISSION_DENIED
-        toast.error("📍 Location permission is required to find neighbors.");
-      } else if (error.code === 3) {
-        // TIMEOUT
-        toast.error("Location request timed out. Please try again.");
-      } else if (error.message === "Failed to register on the server") {
-        toast.error("Server error. Please try again later.");
-      } else {
-        toast.error("An unexpected error occurred while posting.");
-      }
-    } finally {
-      setLoading(false);
-    }
+    setSubmitting(false);
   };
+
+  if (loading)
+    return (
+      <div style={{ textAlign: "center", padding: "100px", fontWeight: "700" }}>
+        Loading information...
+      </div>
+    );
 
   return (
     <div
@@ -165,20 +119,19 @@ export default function AddSharedItemPage() {
           gap: "16px",
         }}
       >
-        <Link
-          href="/shared"
+        <button
+          onClick={() => router.back()}
           style={{
-            textDecoration: "none",
-            fontSize: "20px",
-            color: "#9ca3af",
-            backgroundColor: "white",
+            background: "white",
+            border: "1px solid #f3f4f6",
             width: "40px",
             height: "40px",
             borderRadius: "14px",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            border: "1px solid #f3f4f6",
+            cursor: "pointer",
+            color: "#9ca3af",
           }}
         >
           <svg
@@ -193,7 +146,7 @@ export default function AddSharedItemPage() {
           >
             <path d="M15 18l-6-6 6-6" />
           </svg>
-        </Link>
+        </button>
         <h1
           style={{
             fontSize: "26px",
@@ -202,7 +155,7 @@ export default function AddSharedItemPage() {
             letterSpacing: "-0.025em",
           }}
         >
-          Add Item 🍎
+          Edit Item 🍎
         </h1>
       </div>
 
@@ -243,7 +196,7 @@ export default function AddSharedItemPage() {
                     fontSize: "15px",
                   }}
                 >
-                  Add Pictures
+                  Change Photo
                 </span>
               </>
             )}
@@ -257,7 +210,7 @@ export default function AddSharedItemPage() {
           />
         </div>
 
-        {/* 나눔 방식 선택 (무료나눔 / 직거래) */}
+        {/* ✅ 나눔 방식 선택 (무료나눔 / 직거래) */}
         <div style={{ marginBottom: "24px" }}>
           <label
             style={{
@@ -324,7 +277,6 @@ export default function AddSharedItemPage() {
           <input
             type="text"
             required
-            placeholder="What would you like to share?"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             style={{
@@ -357,15 +309,11 @@ export default function AddSharedItemPage() {
               Quantity
             </label>
             <input
-              type="number"
-              pattern="\d*"
-              required
-              placeholder="0"
+              type="text"
               value={formData.quantity}
-              onChange={(e) => {
-                const val = e.target.value.replace(/[^0-9]/g, "");
-                setFormData({ ...formData, quantity: e.target.value });
-              }}
+              onChange={(e) =>
+                setFormData({ ...formData, quantity: e.target.value })
+              }
               style={{
                 width: "100%",
                 padding: "18px 20px",
@@ -394,8 +342,6 @@ export default function AddSharedItemPage() {
             </label>
             <input
               type="date"
-              required
-              min={today}
               value={formData.expiryDate}
               onChange={(e) =>
                 setFormData({ ...formData, expiryDate: e.target.value })
@@ -410,7 +356,6 @@ export default function AddSharedItemPage() {
                 fontWeight: "600",
                 outline: "none",
                 boxSizing: "border-box",
-                cursor: "pointer",
               }}
             />
           </div>
@@ -432,7 +377,6 @@ export default function AddSharedItemPage() {
           </label>
           <textarea
             rows={5}
-            placeholder="Please include storage tips or meeting locations."
             value={formData.description}
             onChange={(e) =>
               setFormData({ ...formData, description: e.target.value })
@@ -451,40 +395,29 @@ export default function AddSharedItemPage() {
               lineHeight: "1.5",
             }}
           />
-          <p
-            style={{
-              fontSize: "12px",
-              color: "#9ca3af",
-              marginTop: "12px",
-              textAlign: "center",
-              fontWeight: "600",
-            }}
-          >
-            📍 Your current location will be shared with neighbors upon posting.
-          </p>
         </div>
 
         {/* 제출 버튼 */}
         <button
           type="submit"
-          disabled={loading}
+          disabled={submitting}
           style={{
             width: "100%",
             padding: "20px",
             borderRadius: "24px",
-            backgroundColor: loading ? "#f3f4f6" : "#f97316",
-            color: loading ? "#9ca3af" : "white",
+            backgroundColor: submitting ? "#f3f4f6" : "#f97316",
+            color: submitting ? "#9ca3af" : "white",
             fontWeight: "900",
             fontSize: "18px",
             border: "none",
-            cursor: loading ? "not-allowed" : "pointer",
-            boxShadow: loading
+            cursor: submitting ? "not-allowed" : "pointer",
+            boxShadow: submitting
               ? "none"
               : "0 10px 20px rgba(249, 115, 22, 0.25)",
             transition: "all 0.2s ease",
           }}
         >
-          {loading ? "Posting..." : "Post Item"}
+          {submitting ? "Saving..." : "Save Changes"}
         </button>
       </form>
     </div>

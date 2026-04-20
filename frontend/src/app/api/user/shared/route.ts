@@ -8,7 +8,10 @@ export async function GET() {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.email) {
-    return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+    return NextResponse.json(
+      { error: "Authentication is required." },
+      { status: 401 },
+    );
   }
 
   try {
@@ -18,10 +21,7 @@ export async function GET() {
     });
 
     if (!user) {
-      return NextResponse.json(
-        { error: "유저를 찾을 수 없습니다." },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "User not found." }, { status: 404 });
     }
 
     // 3. ownerId가 '내 ID'인 데이터만 필터링해서 가져옴
@@ -36,7 +36,7 @@ export async function GET() {
 
     return NextResponse.json(myItems);
   } catch (error) {
-    console.error("나의 나눔 로드 에러:", error);
+    console.error("My shared items load error:", error);
     return NextResponse.json([]);
   }
 }

@@ -2,11 +2,9 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "./prisma";
 import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
-
-const prisma = new PrismaClient();
 
 declare module "next-auth" {
   interface Session {
@@ -19,7 +17,7 @@ declare module "next-auth" {
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  // adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -27,23 +25,30 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
+
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
         });
+        console.log("찾은 유저:", user); // 유저가 실제로 나오는지 확인
 
-        if (!user || !user.password) return null;
+        if (!user || !user.password) {
+          console.log("유저가 없거나 비밀번호 필드가 없음");
+          return null;
+        }
 
         const isValid = await bcrypt.compare(
           credentials.password,
           user.password,
         );
+
+        console.log("비밀번호 일치 여부:", isValid);
         if (!isValid) return null;
 
         return {
-          id: user.id,
+          id: user.id.toString(),
           email: user.email,
           name: `${user.firstName} ${user.lastName}`,
         };
@@ -69,7 +74,7 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   pages: {
-    signIn: "/login", // 커스텀 로그인 페이지가 있다면 설정
+    signIn: "/auth/login", // 커스텀 로그인 페이지가 있다면 설정
   },
   secret: process.env.NEXTAUTH_SECRET,
 };

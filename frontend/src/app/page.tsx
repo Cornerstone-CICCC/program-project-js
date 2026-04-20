@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react"; // ✅ 추가
 import { cn } from "@/lib/utils"; // 위에서 만든 cn 함수
+import { toast } from "react-hot-toast"; // 라이브러리 설치 필요
 
 export default function HomePage() {
   const router = useRouter();
@@ -42,7 +43,7 @@ export default function HomePage() {
           setIsCheckingAuth(false);
         } else {
           // 401 외의 에러 발생 시 처리
-          console.error("재료 로드 실패");
+          console.error("Failed to load ingredients");
           setIsCheckingAuth(false);
         }
 
@@ -54,11 +55,11 @@ export default function HomePage() {
             setSharedItems(Array.isArray(sharedData) ? sharedData : []);
           }
         } catch (sharedError) {
-          console.error("나눔 목록 로드 실패 (무시하고 진행):", sharedError);
+          console.error("Failed to load shared items:", sharedError);
           setSharedItems([]);
         }
       } catch (error) {
-        console.error("데이터 로드 중 에러 발생:", error);
+        console.error("Error occurred while loading data:", error);
         // 심각한 에러 발생 시 로그인 페이지로 이동하거나 에러 UI 표시
       }
     };
@@ -80,7 +81,9 @@ export default function HomePage() {
         }}
       >
         <span style={{ fontSize: "50px", marginBottom: "20px" }}>🧊</span>
-        <p style={{ color: "#6b7280", fontWeight: "600" }}>냉장고 확인 중...</p>
+        <p style={{ color: "#6b7280", fontWeight: "600" }}>
+          Checking your fridge...
+        </p>
       </div>
     );
   }
@@ -92,27 +95,31 @@ export default function HomePage() {
 
   // 1. 삭제 로직
   const deleteIngredient = async (id: string) => {
-    if (!id) return; // ID가 없으면 중단
-    if (!confirm("정말 이 재료를 삭제하시겠습니까?")) return;
+    if (!id) return;
 
+    // 삭제 확인창(confirm)은 사용자 요청대로 삭제했습니다. 바로 실행됩니다.
     try {
       const response = await fetch(`/api/ingredients/${id}`, {
         method: "DELETE",
       });
 
       if (response.ok) {
-        // id와 _id 모두 대응할 수 있도록 필터링
+        // 1. 상태 업데이트 (화면에서 즉시 제거)
         setIngredients((prev) =>
           prev.filter((item) => (item.id || item._id) !== id),
         );
         setEditingItem(null);
+
+        // 2. 성공 토스트 알림
+        toast.success("Ingredient deleted successfully! 🗑️");
       } else if (response.status === 404) {
-        alert("삭제할 재료를 찾을 수 없거나 권한이 없습니다. (404)");
+        toast.error("Ingredient not found or unauthorized. (404)");
       } else {
-        alert("삭제에 실패했습니다.");
+        toast.error("Failed to delete the ingredient.");
       }
     } catch (error) {
       console.error("Delete request failed:", error);
+      toast.error("An error occurred during deletion.");
     }
   };
 
@@ -132,7 +139,6 @@ export default function HomePage() {
     if (!editingItem) return;
 
     const targetId = editingItem.id || editingItem._id;
-    console.log("수정 요청 ID:", targetId); // 👈 터미널/콘솔에서 ID가 잘 찍히는지 확인
 
     try {
       const res = await fetch(`/api/ingredients/${targetId}`, {
@@ -150,15 +156,20 @@ export default function HomePage() {
 
       if (res.ok) {
         const updated = await res.json();
+
         setIngredients((prev) =>
           prev.map((ing) =>
             (ing.id || ing._id) === (updated.id || updated._id) ? updated : ing,
           ),
         );
+
         setEditingItem(null);
+        toast.success("Changes saved successfully! ✨.");
       } else {
         const errorData = await res.json();
-        alert(`수정 실패: ${errorData.error || "알 수 없는 에러"}`);
+        toast.error(
+          `Update failed: ${errorData.error || "Unknown error occurred"}`,
+        );
       }
     } catch (error) {
       console.error("Failed to update:", error);
@@ -196,7 +207,7 @@ export default function HomePage() {
             cursor: "pointer",
           }}
         >
-          로그아웃 ({session?.user?.name || "User"})
+          Logout ({session?.user?.name || "User"})
         </button>
       </div>
 
@@ -210,7 +221,7 @@ export default function HomePage() {
           fontWeight: "800",
         }}
       >
-        <span>🧊</span> 내 냉장고
+        <span>🧊</span> My Fridge
       </h1>
 
       {/* 액션 버튼 그룹 */}
@@ -228,7 +239,7 @@ export default function HomePage() {
             fontSize: "14px",
           }}
         >
-          + 재료 추가
+          + Add ingredient
         </Link>
       </div>
 
@@ -383,7 +394,7 @@ export default function HomePage() {
               <div style={{ fontSize: "30px", marginBottom: "10px" }}>
                 Empty
               </div>
-              <p style={{ fontSize: "14px" }}>냉장고가 비어있습니다.</p>
+              <p style={{ fontSize: "14px" }}>Your fridge is empty.</p>
             </div>
           )}
         </div>
@@ -431,21 +442,44 @@ export default function HomePage() {
                 <div
                   style={{
                     backgroundColor: "white",
-                    padding: "15px",
-                    borderRadius: "20px",
+                    padding: "20px 15px", // 상하 패딩을 조금 더 주어 여유 있게 조절
+                    borderRadius: "24px",
                     border: "1px solid #f3f4f6",
                     textAlign: "center",
-                    boxShadow: "0 4px 6px rgba(0,0,0,0.02)",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
+                    display: "flex", // 카드 내부 요소 수직 정렬을 위해 추가
+                    flexDirection: "column",
+                    alignItems: "center",
                   }}
                 >
-                  <div style={{ fontSize: "32px", marginBottom: "10px" }}>
-                    {item.imageUrl
-                      ? "📸"
-                      : item.name?.toLowerCase().includes("apple")
-                        ? "🍎"
-                        : item.name?.toLowerCase().includes("milk")
-                          ? "🥛"
-                          : "📦"}
+                  <div
+                    style={{
+                      width: "60px",
+                      height: "60px",
+                      marginBottom: "12px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      overflow: "hidden", // 이미지가 삐져나오지 않게 처리
+                      borderRadius: "16px", // 이미지 박스 자체의 곡률
+                      backgroundColor: "#f9fafb", // 이미지 로딩 전이나 없을 때 대비한 배경색
+                      margin: "0 auto", // ✅ 부모 컨테이너 내에서 가로 중앙 정렬
+                    }}
+                  >
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          display: "block", // 하단 공백 제거
+                        }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: "28px" }}>📸</span>
+                    )}
                   </div>
                   <div style={{ fontWeight: "700", fontSize: "15px" }}>
                     {item.name}
@@ -502,7 +536,7 @@ export default function HomePage() {
                 borderRadius: "20px",
               }}
             >
-              등록된 나눔 아이템이 없습니다.
+              No items shared yet.
             </div>
           )}
         </div>
@@ -530,7 +564,7 @@ export default function HomePage() {
             <div className="bg-orange-50/70 px-6 py-5 border-b border-orange-100/60 flex justify-between items-center">
               <h2 className="text-lg font-black text-gray-800 flex items-center gap-3">
                 <span className="text-3xl">{editingItem.emoji || "✏️"}</span>
-                재료 정보 수정
+                Edit Ingredient Info
               </h2>
               <button
                 onClick={() => setEditingItem(null)}
@@ -557,7 +591,7 @@ export default function HomePage() {
               {/* 재료 이름 - 한 줄 */}
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">
-                  재료 이름
+                  Item Name
                 </label>
                 <input
                   type="text"
@@ -574,7 +608,7 @@ export default function HomePage() {
                 {/* 수량 조절 */}
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">
-                    수량 / 단위
+                    Amount
                   </label>
                   <div className="flex items-center justify-between gap-1.5 bg-gray-50 p-1 rounded-xl border border-gray-100 h-[52px]">
                     <button
@@ -601,7 +635,7 @@ export default function HomePage() {
                 {/* 유통기한 */}
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">
-                    유통기한
+                    Expired date
                   </label>
                   <input
                     type="date"
@@ -626,10 +660,10 @@ export default function HomePage() {
               {/* 메모 - 한 줄 */}
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">
-                  메모
+                  Memo
                 </label>
                 <textarea
-                  placeholder="보관 방법이나 유의사항을 적어주세요."
+                  placeholder="Add storage tips or special notes here."
                   value={editingItem.memo || ""}
                   onChange={(e) =>
                     setEditingItem({ ...editingItem, memo: e.target.value })
@@ -646,13 +680,13 @@ export default function HomePage() {
                   onClick={() => setEditingItem(null)}
                   className="flex-1 py-3.5 bg-gray-100 text-gray-500 font-bold rounded-xl hover:bg-gray-200"
                 >
-                  취소
+                  Canceled
                 </button>
                 <button
                   onClick={handleSaveEdit}
                   className="flex-1 py-3.5 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition-all shadow-md shadow-orange-100"
                 >
-                  저장하기
+                  Save
                 </button>
               </div>
 
@@ -662,7 +696,7 @@ export default function HomePage() {
                 }
                 className="py-2.5 text-xs font-semibold text-gray-400 hover:text-red-500 transition-colors"
               >
-                냉장고에서 이 재료 삭제하기
+                Remove from fridge
               </button>
             </div>
           </div>
