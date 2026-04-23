@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 
 const prisma = new PrismaClient();
 
+// 1. POST: 채팅방 생성 또는 기존 방 조회
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
 
@@ -16,16 +17,12 @@ export async function POST(req: Request) {
     const { ownerId, itemId } = await req.json();
     const myId = session.user.id;
 
-    // 본인 아이템에 채팅을 시도하는 경우 방지
     if (myId === ownerId) {
       return new NextResponse("You cannot chat with yourself.", {
         status: 400,
       });
     }
 
-    // 1. 기존 채팅방이 있는지 확인 (@@unique 제약조건 순서에 맞춰 조회)
-    // user1Id와 user2Id는 누가 먼저일지 모르므로 두 가지 경우를 체크하거나
-    // 생성 시 오름차순으로 정렬해서 넣는 방식을 씁니다.
     const [u1, u2] = [myId, ownerId].sort();
 
     let chat = await prisma.chat.findUnique({
@@ -38,7 +35,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // 2. 방이 없다면 새로 생성
     if (!chat) {
       chat = await prisma.chat.create({
         data: {
@@ -56,7 +52,9 @@ export async function POST(req: Request) {
   }
 }
 
-// --- ✅ 새로 추가할 GET 함수 (내 채팅방 목록 가져오기) ---
+export const dynamic = "force-dynamic";
+
+// 2. GET: 내 채팅방 목록 가져오기 (안 읽은 알림 강조용 데이터 포함)
 export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -64,15 +62,15 @@ export async function GET(req: Request) {
       return new NextResponse("Authentication is required.", { status: 401 });
     }
 
+    const currentUserId = session.user.id;
     const { searchParams } = new URL(req.url);
     const itemId = searchParams.get("itemId");
 
-    // 내가 참여한 모든 채팅방 조회 (user1 또는 user2가 나인 경우)
     const chatRooms = await prisma.chat.findMany({
       where: {
         AND: [
-          { OR: [{ user1Id: session.user.id }, { user2Id: session.user.id }] },
-          itemId ? { sharedItemId: itemId } : {}, // 특정 아이템 필터링(선택)
+          { OR: [{ user1Id: currentUserId }, { user2Id: currentUserId }] },
+          itemId ? { sharedItemId: itemId } : {},
         ],
       },
       include: {
@@ -84,11 +82,22 @@ export async function GET(req: Request) {
         },
         sharedItem: true,
         messages: {
-          take: 1, // 마지막 메시지만 가져옴
+          take: 1,
           orderBy: { createdAt: "desc" },
         },
+        // ✅ [추가 포인트] 안 읽은 알림 개수 집계
+        _count: {
+          select: {
+            messages: {
+              where: {
+                NOT: { senderId: currentUserId }, // 내가 보낸 게 아니고
+                isRead: false,
+              },
+            },
+          },
+        },
       },
-      orderBy: { updatedAt: "desc" }, // 최근 활동 순 정렬
+      orderBy: { updatedAt: "desc" },
     });
 
     return NextResponse.json(chatRooms);

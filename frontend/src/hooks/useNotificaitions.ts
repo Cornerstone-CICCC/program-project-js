@@ -1,63 +1,66 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { getPusherClient } from "../../lib/pusher"; // 경로 확인!
-import toast from "react-hot-toast";
+import { getPusherClient } from "../../lib/pusher";
 
 export const useNotifications = () => {
   const { data: session } = useSession();
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // ✅ 1. 데이터 페칭 로직을 useCallback으로 분리 (재사용 가능)
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/notifications?t=${Date.now()}`, {
+        cache: "no-store",
+        headers: {
+          Pragma: "no-cache",
+          "Cache-Control": "no-cache",
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        // isRead가 false인 알림들만 필터링해서 카운트
+        const unread = data.filter((n: any) => !n.isRead).length;
+
+        setUnreadCount(unread);
+      }
+    } catch (error) {
+      console.error("Failed to load notifications:", error);
+    }
+  }, []);
+
   useEffect(() => {
-    // 1. 세션이나 유저 ID가 없으면 실행하지 않음
     const userId = (session?.user as any)?.id;
     if (!userId) return;
 
-    // 2. 초기 로드 시 읽지 않은 알림 개수 확인
-    const fetchNotifications = async () => {
-      try {
-        const res = await fetch("/api/notifications");
-        if (res.ok) {
-          const data = await res.json();
-          // 알림 객체에 isRead 필드가 있는지 확인 필요
-          const unread = data.filter((n: any) => !n.isRead).length;
-          setUnreadCount(unread);
-        }
-      } catch (error) {
-        console.error("Failed to load notifications:", error);
-      }
-    };
-
+    // 초기 로드
     fetchNotifications();
 
-    // 3. Pusher 실시간 구독
+    // ✅ 2. 뒤로가기/포커스 시 데이터 갱신
+    // 사용자가 채팅방에서 나거나 창을 다시 볼 때 최신 개수를 가져옵니다.
+    window.addEventListener("focus", fetchNotifications);
+
+    // Pusher 실시간 구독
     const pusher = getPusherClient();
     const channelName = `notify-${userId}`;
     const channel = pusher.subscribe(channelName);
 
-    // 이벤트 핸들러를 별도 함수로 분리 (메모리 누수 방지 및 정리 용이)
-    const handleNewNotification = (data: any) => {
+    const handleNewNotification = () => {
       setUnreadCount((prev) => prev + 1);
-      toast(data.content || "You have a new notification.", {
-        icon: "🔔",
-        duration: 4000,
-        style: {
-          borderRadius: "15px",
-          background: "#333",
-          color: "#fff",
-        },
-      });
     };
 
     channel.bind("new-notification", handleNewNotification);
 
-    // 4. Cleanup: 언마운트 시 구독 해제 및 바인딩 제거
+    // 3. Cleanup
     return () => {
+      window.removeEventListener("focus", fetchNotifications);
       channel.unbind("new-notification", handleNewNotification);
       pusher.unsubscribe(channelName);
     };
-  }, [session?.user?.id]); // ✅ session 전체보다 id를 종속성으로 넣는 것이 더 정확합니다.
+  }, [session?.user?.id, fetchNotifications]);
 
-  return { unreadCount, setUnreadCount };
+  // ✅ fetchNotifications를 반환값에 포함시켜 페이지에서 직접 호출 가능하게 함
+  return { unreadCount, setUnreadCount, fetchNotifications };
 };

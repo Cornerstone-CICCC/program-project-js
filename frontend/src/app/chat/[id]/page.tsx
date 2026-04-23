@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, use, useMemo } from "react";
+import { useState, useEffect, useRef, use, useMemo, useCallback } from "react";
 import Pusher from "pusher-js";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
+import { useNotifications } from "@/src/hooks/useNotificaitions";
 
 export default function ChatRoomPage({
   params,
@@ -15,6 +16,9 @@ export default function ChatRoomPage({
   const router = useRouter();
   const { data: session } = useSession();
 
+  // fetchNotifications도 함께 가져옵니다.
+  const { setUnreadCount, fetchNotifications } = useNotifications();
+
   const [chat, setChat] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
@@ -22,20 +26,17 @@ export default function ChatRoomPage({
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // 1. Pusher 인스턴스를 메모이제이션 (인스턴스가 한 번만 생성되도록 고정)
+  // 1. Pusher 인스턴스 고정
   const pusher = useMemo(() => {
     if (typeof window === "undefined") return null;
-
-    // 만약 Pusher가 함수가 아니라면 .default를 사용하도록 방어 코드를 짭니다.
     const PusherClient = (Pusher as any).default || Pusher;
-
     return new PusherClient(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
       cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
       forceTLS: true,
     });
   }, []);
 
-  // 2. 초기 데이터 로드 (기존 메시지 내역)
+  // 2. 초기 데이터 로드 및 읽음 처리 (뒤로가기 대응 포함)
   useEffect(() => {
     const fetchChatData = async () => {
       try {
@@ -51,8 +52,71 @@ export default function ChatRoomPage({
         setLoading(false);
       }
     };
+
+    const markAsRead = async () => {
+      try {
+        // ✅ [수정] 두 가지 API를 동시에 호출하여 근본적인 DB 상태를 변경합니다.
+        await Promise.all([
+          // A. 특정 채팅방 메시지 읽음 처리 (리스트 배지 제거용)
+          fetch(`/api/chat/${chatId}/read`, {
+            method: "PATCH",
+            cache: "no-store",
+          }),
+
+          // B. 전체 알림 읽음 처리 (Nav Bar 숫자 제거용)
+          fetch("/api/notifications", { method: "PATCH", cache: "no-store" }),
+        ]);
+
+        // ✅ 즉시 클라이언트 숫자를 0으로 만들고
+        setUnreadCount(0);
+
+        // ✅ Nav Bar가 서버에서 최신 상태(0)를 다시 가져오도록 유도
+        fetchNotifications();
+      } catch (err) {
+        console.error("Failed to mark as read:", err);
+      }
+    };
+
     fetchChatData();
-  }, [chatId]);
+    markAsRead();
+
+    // ✅ 뒤로가기 시 즉시 반영을 위한 리스너
+    const handleBackNavigation = () => {
+      setUnreadCount(0);
+      fetchNotifications(); // 뒤로가기 시에도 안전하게 한 번 더 호출
+    };
+    window.addEventListener("popstate", handleBackNavigation);
+
+    return () => {
+      setUnreadCount(0);
+      window.removeEventListener("popstate", handleBackNavigation);
+    };
+    // ⚠️ 의존성 배열 크기를 3번과 동일하게 맞춤 (에러 방지)
+  }, [chatId, setUnreadCount, fetchNotifications]);
+
+  // 3. 실시간 구독 및 이벤트 바인딩 (중복 제거 후 통합)
+  useEffect(() => {
+    if (!chatId || !pusher) return;
+
+    const channel = pusher.subscribe(`chat-${chatId}`);
+
+    const handleNewMessage = (newMessage: any) => {
+      setMessages((prev) => {
+        if (prev.find((m) => m.id === newMessage.id)) return prev;
+        return [...prev, newMessage];
+      });
+      // ✅ 채팅 중엔 알림 숫자를 0으로 유지
+      setUnreadCount(0);
+    };
+
+    channel.bind("new-message", handleNewMessage);
+
+    return () => {
+      channel.unbind("new-message", handleNewMessage);
+      pusher.unsubscribe(`chat-${chatId}`);
+    };
+    // ⚠️ 의존성 배열 크기를 2번과 동일하게 맞춤 (에러 방지)
+  }, [chatId, pusher, setUnreadCount, fetchNotifications]);
 
   // 3. 실시간 구독 및 이벤트 바인딩
   useEffect(() => {
@@ -62,18 +126,18 @@ export default function ChatRoomPage({
 
     channel.bind("new-message", (newMessage: any) => {
       setMessages((prev) => {
-        // 중복 방지: 이미 목록에 있는 ID라면 추가하지 않음
         if (prev.find((m) => m.id === newMessage.id)) return prev;
         return [...prev, newMessage];
       });
+
+      // ✅ 채팅 중에 메시지가 오면 읽은 것이나 다름없으므로 숫자를 0으로 유지
+      setUnreadCount(0);
     });
 
     return () => {
-      // ✅ Cleanup: 페이지를 이동하거나 나갈 때 구독 해제만 수행 (연결 종료는 pusher가 알아서 관리)
-      channel.unbind_all();
       pusher.unsubscribe(`chat-${chatId}`);
     };
-  }, [chatId, pusher]);
+  }, [chatId, pusher, setUnreadCount, fetchNotifications]);
 
   // 4. 메시지 전송 핸들러
   const sendMessage = async (e: React.FormEvent) => {
@@ -124,7 +188,13 @@ export default function ChatRoomPage({
     <div className="flex flex-col h-screen bg-[#f8f9fa] max-w-[600px] mx-auto shadow-2xl shadow-gray-200/50">
       {/* 상단 헤더 */}
       <header className="bg-white/90 backdrop-blur-md px-4 py-4 flex items-center border-b border-gray-100 sticky top-0 z-20">
-        <button onClick={() => router.back()} className="p-2 mr-2">
+        <button
+          onClick={() => {
+            setUnreadCount(0); // 1. 숫자를 먼저 0으로 밀어버리고
+            router.back(); // 2. 뒤로 이동
+          }}
+          className="p-2 mr-2"
+        >
           <svg
             width="24"
             height="24"
@@ -154,18 +224,19 @@ export default function ChatRoomPage({
       {chat.sharedItem && (
         <div className="bg-white px-5 py-3 border-b border-gray-50 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img
-              src={chat.sharedItem.imageUrl}
-              className="w-12 h-12 rounded-xl object-cover border border-gray-100"
-            />
-            <div>
-              <p className="text-[10px] text-gray-400 font-black">
-                Sharing Info
-              </p>
-              <p className="text-sm font-extrabold text-[#1f2937]">
-                {chat.sharedItem.name}
-              </p>
-            </div>
+            {chat?.sharedItem?.imageUrl ? (
+              <img
+                src={chat.sharedItem.imageUrl}
+                alt={chat.sharedItem.title || "item"}
+                className="w-12 h-12 rounded-xl object-cover border border-gray-100"
+              />
+            ) : (
+              /* 이미지가 없을 때 보여줄 회색 박스 또는 기본 아이콘 */
+              <div className="w-12 h-12 rounded-xl bg-gray-200 flex items-center justify-center">
+                <span className="text-xs text-gray-400">No Image</span>
+              </div>
+            )}
+            {/* 아이템 정보(제목 등)가 옆에 있다면 계속 작성 */}
           </div>
           <button
             onClick={() => router.push(`/shared/${chat.sharedItemId}`)}

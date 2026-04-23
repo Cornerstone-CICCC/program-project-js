@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { getPusherClient } from "../../../lib/pusher"; // Pusher 설정 불러오기
 import { useNotifications } from "@/src/hooks/useNotificaitions";
+import { cn } from "@/lib/utils";
 
 export default function ChatListPage() {
   const router = useRouter();
@@ -17,12 +18,17 @@ export default function ChatListPage() {
   const [chatRooms, setChatRooms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const pathname = usePathname();
+
   // 데이터 페칭 로직 (기능 유지)
   useEffect(() => {
     const fetchRooms = async () => {
       try {
-        const url = itemId ? `/api/chat?itemId=${itemId}` : "/api/chat";
-        const res = await fetch(url);
+        // itemId가 있으면 쿼리 추가, 없으면 빈 문자열
+        const itemQuery = itemId ? `itemId=${itemId}&` : "";
+        const url = `/api/chat?${itemQuery}t=${Date.now()}`;
+
+        const res = await fetch(url, { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
           setChatRooms(data);
@@ -33,16 +39,20 @@ export default function ChatListPage() {
         setLoading(false);
       }
     };
+
     fetchRooms();
-  }, [itemId]);
+
+    window.addEventListener("focus", fetchRooms);
+    return () => window.removeEventListener("focus", fetchRooms);
+
+    // ✅ 중요: 의존성 배열의 길이를 처음부터 [itemId, pathname]으로 고정합니다.
+    // itemId가 null이든 아니든 배열의 길이는 항상 2로 유지됩니다.
+  }, [itemId, pathname]);
 
   useEffect(() => {
     if (!session?.user?.id) return;
 
     const pusher = getPusherClient();
-
-    // 유저 전용 알림/업데이트 채널 구독
-    // (메시지 전송 API에서 이 채널로 'list-update' 같은 이벤트를 쏴줘야 합니다)
     const channel = pusher.subscribe(`user-chats-${session.user.id}`);
 
     channel.bind("update-list", (updatedChat: any) => {
@@ -172,11 +182,22 @@ export default function ChatListPage() {
         ) : (
           chatRooms.map((chat) => {
             const otherUser = getOtherUser(chat);
+
+            // ✅ [추가] 안 읽은 메시지 여부 및 개수 파악
+            const unreadCountInRoom = chat._count?.messages || 0;
+            const hasUnread = unreadCountInRoom > 0;
+
             return (
               <Link
                 key={chat.id}
                 href={`/chat/${chat.id}`}
-                className="flex items-center gap-4 p-5 bg-white rounded-[32px] border border-gray-100/50 hover:border-blue-200 hover:shadow-[0_10px_25px_-5px_rgba(249,115,22,0.08)] transition-all active:scale-[0.98] group"
+                // ✅ [수정] hasUnread일 때 배경색 미세하게 변경 (기존 디자인 유지하며 배경만 조건부 추가)
+                className={cn(
+                  "flex items-center gap-4 p-5 rounded-[32px] border transition-all active:scale-[0.98] group",
+                  hasUnread
+                    ? "bg-blue-50/50 border-blue-100 shadow-[0_10px_20px_-5px_rgba(249,115,22,0.05)]"
+                    : "bg-white border-gray-100/50 hover:border-blue-200 hover:shadow-[0_10px_25px_-5px_rgba(249,115,22,0.08)]",
+                )}
               >
                 {/* 아바타 영역 */}
                 <div className="relative flex-shrink-0">
@@ -191,23 +212,52 @@ export default function ChatListPage() {
                       👤
                     </div>
                   )}
-                  {/* 온라인 뱃지 */}
-                  <div className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 bg-green-500 border-[3px] border-white rounded-full"></div>
+
+                  {hasUnread ? (
+                    <div className="absolute -top-1 -right-1 min-w-[22px] h-[22px] px-1.5 bg-blue-500 border-2 border-white rounded-full flex items-center justify-center text-white text-[10px] font-black shadow-sm z-10">
+                      {unreadCountInRoom > 9 ? "9+" : unreadCountInRoom}
+                    </div>
+                  ) : (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 bg-green-500 border-[3px] border-white rounded-full"></div>
+                  )}
                 </div>
 
                 {/* 채팅 정보 */}
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-center mb-1">
-                    <h3 className="font-[800] text-[#1f2937] text-[17px] group-hover:text-blue-600 transition-colors">
-                      {otherUser?.firstName}
-                      {otherUser?.lastName || "Neighbor"}
+                    <h3
+                      className={cn(
+                        "text-[17px] group-hover:text-blue-600 transition-colors",
+                        // ✅ [수정] 안 읽은 메시지 있으면 폰트 가중치 최대화
+                        hasUnread
+                          ? "font-[900] text-black"
+                          : "font-[800] text-[#1f2937]",
+                      )}
+                    >
+                      {otherUser?.firstName} {otherUser?.lastName || "Neighbor"}
                     </h3>
-                    <span className="text-[11px] text-gray-400 font-bold bg-gray-50 px-2 py-1 rounded-lg">
+                    <span
+                      className={cn(
+                        "text-[11px] font-bold px-2 py-1 rounded-lg",
+                        // ✅ [수정] 안 읽은 메시지 있으면 날짜 태그 색상 강조
+                        hasUnread
+                          ? "bg-blue-500 text-white"
+                          : "bg-gray-50 text-gray-400",
+                      )}
+                    >
                       {chat.messages?.[0] ? "Just now" : ""}
                     </span>
                   </div>
 
-                  <p className="text-[14px] text-gray-500 truncate font-medium mb-2 pr-4">
+                  {/* ✅ [수정] 안 읽은 메시지 있으면 텍스트 진하게 */}
+                  <p
+                    className={cn(
+                      "text-[14px] truncate mb-2 pr-4",
+                      hasUnread
+                        ? "text-gray-900 font-bold"
+                        : "text-gray-500 font-medium",
+                    )}
+                  >
                     {chat.messages?.[0]?.content ||
                       "A new chat room has been created."}
                   </p>

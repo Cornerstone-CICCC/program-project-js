@@ -30,14 +30,13 @@ export async function GET() {
 }
 
 // 2. 모든 알림 읽음 처리 (PATCH)
-export async function PATCH() {
+export async function PATCH(req: Request) {
   try {
     const session = await getServerSession(authOptions);
+    if (!session?.user)
+      return new NextResponse("Unauthorized", { status: 401 });
 
-    if (!session?.user) {
-      return new NextResponse("로그인이 필요합니다.", { status: 401 });
-    }
-
+    // 내 모든 안 읽은 알림을 읽음 처리
     await db.notification.updateMany({
       where: {
         userId: (session.user as any).id,
@@ -48,9 +47,8 @@ export async function PATCH() {
       },
     });
 
-    return new NextResponse("모든 알림을 읽음 처리했습니다.", { status: 200 });
+    return new NextResponse("Success", { status: 200 });
   } catch (error) {
-    console.error("[NOTIFICATIONS_PATCH]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+    return new NextResponse("Error", { status: 500 });
   }
 }

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import Pusher from "pusher";
 import { db } from "@/lib/db"; // 기존에 사용하던 db 인스턴스 사용
+import { createNotification } from "@/lib/notification"; // 이 함수를 가져왔는지 확인!
 
 // Pusher 서버 인스턴스 설정
 const pusher = new Pusher({
@@ -58,6 +59,19 @@ export async function POST(
       updatedChat.user1Id === senderId
         ? updatedChat.user2Id
         : updatedChat.user1Id;
+
+    // 🚀 여기에 추가하세요!
+    try {
+      await createNotification({
+        userId: receiverId,
+        type: "CHAT",
+        title: "New Message",
+        content: content,
+      });
+    } catch (nError) {
+      // 알림 생성 실패가 채팅 메시지 전송 자체를 막지 않도록 에러 처리
+      console.error("Notification failed:", nError);
+    }
 
     // 4. ✅ Pusher 실시간 이벤트 전송
     // (1) 채팅방 내부: 새로운 메시지 한 개 전송
