@@ -5,6 +5,25 @@ import { useSession } from "next-auth/react"; // 세션 정보 가져오기
 import toast from "react-hot-toast"; // ✅ 라이브러리 임포트
 import moment from "moment";
 
+function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371; // 지구 반지름 (km)
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+
+  if (distance < 1) {
+    return `${Math.round(distance * 1000)}m`;
+  }
+  return `${distance.toFixed(1)}km`;
+}
+
 export default function SharedItemDetailPage({
   params,
 }: {
@@ -18,6 +37,11 @@ export default function SharedItemDetailPage({
   const [loading, setLoading] = useState(true);
   const [isToastOpen, setIsToastOpen] = useState(false); // ✅ Toast 상태 관리
   const [isDeleteConfirm, setIsDeleteConfirm] = useState(false);
+
+  const [userCoords, setUserCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
 
   // 현재 접속자가 게시글 주인인지 확인
   const isOwner = session?.user?.id === item?.userId;
@@ -65,6 +89,16 @@ export default function SharedItemDetailPage({
     }
   };
 
+  // 내 위치 가져오기
+  useEffect(() => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      (err) => console.error("Location error", err),
+    );
+  }, []);
+
   // 2. useEffect에서 호출
   useEffect(() => {
     fetchItem();
@@ -89,6 +123,11 @@ export default function SharedItemDetailPage({
       error: "Failed to delete.",
     });
   };
+
+  const displayDistance =
+    userCoords && item?.lat && item?.lng
+      ? getDistance(userCoords.lat, userCoords.lng, item.lat, item.lng)
+      : "Calculating..."; // 위치 확인 전 표시될 문구
 
   if (loading)
     return (
@@ -250,7 +289,7 @@ export default function SharedItemDetailPage({
           <span style={{ fontSize: "18px" }}>📍</span>
           <span style={{ color: "#f97316", fontWeight: "800" }}>
             {" "}
-            Within 300m{" "}
+            {displayDistance}{" "}
           </span>
           <span style={{ color: "#e5e7eb", margin: "0 4px" }}>|</span>
           <span>Expiry: {formattedExpiry}</span>

@@ -286,10 +286,10 @@ export default function AddSharedItemPage() {
                   borderRadius: "20px",
                   border: "2px solid",
                   borderColor:
-                    formData.status === type.id ? "#f97316" : "#f3f4f6",
+                    formData.status === type.id ? "#2563eb" : "#f3f4f6",
                   backgroundColor:
-                    formData.status === type.id ? "#fff7ed" : "white",
-                  color: formData.status === type.id ? "#f97316" : "#9ca3af",
+                    formData.status === type.id ? "#2563eb" : "white",
+                  color: formData.status === type.id ? "white" : "#2563eb",
                   fontWeight: "800",
                   fontSize: "15px",
                   cursor: "pointer",
@@ -390,7 +390,7 @@ export default function AddSharedItemPage() {
                 marginLeft: "4px",
               }}
             >
-              Expired date
+              Expiry date
             </label>
             <input
               type="date"
@@ -472,16 +472,12 @@ export default function AddSharedItemPage() {
             width: "100%",
             padding: "20px",
             borderRadius: "24px",
-            backgroundColor: loading ? "#f3f4f6" : "#f97316",
+            backgroundColor: loading ? "#f3f4f6" : "#2563eb",
             color: loading ? "#9ca3af" : "white",
             fontWeight: "900",
             fontSize: "18px",
             border: "none",
             cursor: loading ? "not-allowed" : "pointer",
-            boxShadow: loading
-              ? "none"
-              : "0 10px 20px rgba(249, 115, 22, 0.25)",
-            transition: "all 0.2s ease",
           }}
         >
           {loading ? "Posting..." : "Post Item"}

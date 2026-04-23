@@ -2,10 +2,11 @@
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import { Providers } from "../components/Providers";
+import Navigation from "../components/Navigation";
 
 export const metadata = {
-  title: "자취생 냉장고 친구",
-  description: "냉장고 파먹기 프로젝트",
+  title: "Refridge",
+  description: "Clear My Fridge",
 };
 
 export default function RootLayout({
@@ -14,7 +15,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko">
+    <html lang="en">
       <body>
         {/* Providers로 children을 감싸줍니다. */}
         <Providers>
@@ -22,6 +23,7 @@ export default function RootLayout({
             {children}
             <Toaster position="top-center" reverseOrder={false} />
           </main>
+          <Navigation />
         </Providers>
       </body>
     </html>

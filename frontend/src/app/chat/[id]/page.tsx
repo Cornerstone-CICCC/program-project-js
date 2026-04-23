@@ -24,7 +24,12 @@ export default function ChatRoomPage({
 
   // 1. Pusher 인스턴스를 메모이제이션 (인스턴스가 한 번만 생성되도록 고정)
   const pusher = useMemo(() => {
-    return new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+    if (typeof window === "undefined") return null;
+
+    // 만약 Pusher가 함수가 아니라면 .default를 사용하도록 방어 코드를 짭니다.
+    const PusherClient = (Pusher as any).default || Pusher;
+
+    return new PusherClient(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
       cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
       forceTLS: true,
     });
@@ -82,7 +87,6 @@ export default function ChatRoomPage({
       createdAt: new Date(),
     };
 
-    setMessages((prev) => [...prev, tempMessage]);
     const currentInput = input;
     setInput("");
 
@@ -133,7 +137,7 @@ export default function ChatRoomPage({
           </svg>
         </button>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-orange-100 rounded-2xl flex items-center justify-center text-lg">
+          <div className="w-10 h-10 bg-blue-100 rounded-2xl flex items-center justify-center text-lg">
             👤
           </div>
           <div>
@@ -165,7 +169,7 @@ export default function ChatRoomPage({
           </div>
           <button
             onClick={() => router.push(`/shared/${chat.sharedItemId}`)}
-            className="text-[11px] font-black text-orange-600 bg-orange-50 px-3 py-2 rounded-xl"
+            className="text-[11px] font-black text-blue-600 bg-blue-50 px-3 py-2 rounded-xl"
           >
             View Details
           </button>
@@ -183,7 +187,7 @@ export default function ChatRoomPage({
             >
               <div
                 className={`max-w-[75%] p-4 rounded-[24px] text-[15px] font-medium leading-relaxed shadow-sm
-                ${isMe ? "bg-orange-500 text-white rounded-tr-none" : "bg-white text-gray-800 rounded-tl-none border border-gray-100"}`}
+                ${isMe ? "bg-blue-500 text-white rounded-tr-none" : "bg-white text-gray-800 rounded-tl-none border border-gray-100"}`}
               >
                 {msg.content}
               </div>
@@ -200,11 +204,11 @@ export default function ChatRoomPage({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Send a message to your neighbor"
-            className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-[15px] font-semibold outline-none focus:ring-2 focus:ring-orange-100 transition-all"
+            className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-[15px] font-semibold outline-none focus:ring-2 focus:ring-blue-100 transition-all"
           />
           <button
             type="submit"
-            className="bg-orange-500 text-white w-[54px] h-[54px] rounded-[18px] flex items-center justify-center shadow-lg shadow-orange-200 active:scale-90 transition-all"
+            className="bg-blue-500 text-white w-[54px] h-[54px] rounded-[18px] flex items-center justify-center shadow-lg shadow-blue-200 active:scale-90 transition-all"
           >
             <svg
               width="24"

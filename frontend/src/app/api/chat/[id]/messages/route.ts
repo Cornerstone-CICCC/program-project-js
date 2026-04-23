@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import Pusher from "pusher";
-
-const prisma = new PrismaClient();
+import { db } from "@/lib/db"; // 기존에 사용하던 db 인스턴스 사용
 
 // Pusher 서버 인스턴스 설정
 const pusher = new Pusher({
@@ -17,30 +15,65 @@ const pusher = new Pusher({
 
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string }> }, // Next.js 최신 버전 대응 (Promise)
 ) {
-  const { id: chatId } = await params;
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id)
-    return new NextResponse("Unauthorized", { status: 401 });
-
   try {
+    const { id: chatId } = await params;
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.id) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const senderId = session.user.id;
     const { content } = await req.json();
 
-    const message = await prisma.message.create({
-      data: { chatId, senderId: session.user.id, content },
+    // 1. 메시지 생성
+    const message = await db.message.create({
+      data: {
+        chatId,
+        senderId,
+        content,
+      },
     });
 
-    await prisma.chat.update({
+    // 2. 채팅방 업데이트 (시간 및 마지막 메시지)
+    // 리스트 갱신을 위해 업데이트된 채팅방의 모든 정보(유저, 아이템 포함)를 가져옵니다.
+    const updatedChat = await db.chat.update({
       where: { id: chatId },
-      data: { updatedAt: new Date(), lastMessage: content },
+      data: {
+        updatedAt: new Date(),
+        lastMessage: content,
+      },
+      include: {
+        messages: { take: 1, orderBy: { createdAt: "desc" } },
+        user1: true,
+        user2: true,
+        sharedItem: true,
+      },
     });
 
-    // ✅ Pusher를 통해 해당 채팅방 채널에 'new-message' 이벤트 전송
+    // 3. 상대방(Receiver) ID 찾기
+    const receiverId =
+      updatedChat.user1Id === senderId
+        ? updatedChat.user2Id
+        : updatedChat.user1Id;
+
+    // 4. ✅ Pusher 실시간 이벤트 전송
+    // (1) 채팅방 내부: 새로운 메시지 한 개 전송
     await pusher.trigger(`chat-${chatId}`, "new-message", message);
+
+    // (2) 채팅 목록 페이지: 나(sender)와 상대방(receiver)의 리스트를 실시간 갱신
+    await pusher.trigger(`user-chats-${senderId}`, "update-list", updatedChat);
+    await pusher.trigger(
+      `user-chats-${receiverId}`,
+      "update-list",
+      updatedChat,
+    );
 
     return NextResponse.json(message);
   } catch (error) {
+    console.error("[MESSAGE_POST_ERROR]", error);
     return new NextResponse("Error", { status: 500 });
   }
 }

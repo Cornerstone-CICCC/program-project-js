@@ -15,6 +15,8 @@ export default function AddIngredientPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  const today = new Date().toISOString().split("T")[0];
+
   // 수량 조절 함수
   const adjustQuantity = (amount: number) => {
     setQuantity((prev) => Math.max(0, prev + amount));
@@ -73,7 +75,7 @@ export default function AddIngredientPage() {
         {/* 메인 입력 카드 */}
         <div className="w-full max-w-md bg-white rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-gray-50 overflow-hidden">
           {/* 카드 헤더 */}
-          <div className="bg-orange-50/70 px-8 py-6 border-b border-orange-100/60">
+          <div className="bg-blue-50/70 px-8 py-6 border-b border-blue-100/60">
             <h1 className="text-2xl font-black text-gray-800 flex items-center gap-3">
               <span className="text-3xl">🍎</span>
               Add New Ingredient
@@ -92,7 +94,7 @@ export default function AddIngredientPage() {
                 placeholder="e.g., apple, milk, meat"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:bg-white outline-none transition-all font-semibold placeholder:text-gray-300"
+                className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all font-semibold placeholder:text-gray-300"
               />
             </div>
 
@@ -106,7 +108,7 @@ export default function AddIngredientPage() {
                   <button
                     type="button"
                     onClick={() => adjustQuantity(-0.5)}
-                    className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm text-orange-500 font-bold hover:bg-orange-500 hover:text-white transition-all"
+                    className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm text-blue-500 font-bold hover:bg-blue-500 hover:text-white transition-all"
                   >
                     -
                   </button>
@@ -119,7 +121,7 @@ export default function AddIngredientPage() {
                   <button
                     type="button"
                     onClick={() => adjustQuantity(0.5)}
-                    className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm text-orange-500 font-bold hover:bg-orange-500 hover:text-white transition-all"
+                    className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm text-blue-500 font-bold hover:bg-blue-500 hover:text-white transition-all"
                   >
                     +
                   </button>
@@ -128,13 +130,15 @@ export default function AddIngredientPage() {
 
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">
-                  Expiration Date
+                  Expiry Date
                 </label>
                 <input
                   type="date"
+                  required
+                  min={today}
                   value={expiryDate}
                   onChange={(e) => setExpiryDate(e.target.value)}
-                  className="w-full px-4 h-[58px] bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none text-sm font-medium"
+                  className="w-full px-4 h-[58px] bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium"
                 />
               </div>
             </div>
@@ -148,7 +152,7 @@ export default function AddIngredientPage() {
                 placeholder="Enter storage instructions or special notes."
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}
-                className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none h-24 resize-none text-sm leading-relaxed"
+                className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none text-sm leading-relaxed"
               />
             </div>
 
@@ -159,7 +163,7 @@ export default function AddIngredientPage() {
               className={`w-full py-4 text-white font-black rounded-2xl transition-all shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] ${
                 loading
                   ? "bg-gray-300 shadow-none cursor-default"
-                  : "bg-orange-500 hover:bg-orange-600 shadow-orange-200"
+                  : "bg-blue-500 hover:bg-blue-600 shadow-blue-200"
               }`}
             >
               {loading ? "Saving..." : "Add to Fridge 🧊"}

@@ -428,16 +428,8 @@ export default function SharedBoardPage() {
           color: "white",
           fontSize: "32px",
           textDecoration: "none",
-          boxShadow: "0 15px 30px rgba(249, 115, 22, 0.35)",
           zIndex: 1000,
-          transition: "transform 0.2s ease",
         }}
-        onMouseEnter={(e) =>
-          (e.currentTarget.style.transform = "scale(1.1) rotate(90deg)")
-        }
-        onMouseLeave={(e) =>
-          (e.currentTarget.style.transform = "scale(1) rotate(0deg)")
-        }
       >
         <svg
           width="28"
@@ -453,82 +445,6 @@ export default function SharedBoardPage() {
           <line x1="5" y1="12" x2="19" y2="12" />
         </svg>
       </Link>
-
-      {/* 하단 내비게이션 바 */}
-      <nav
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: "80px",
-          backgroundColor: "rgba(255,255,255,0.9)",
-          backdropFilter: "blur(10px)",
-          borderTop: "1px solid #f3f4f6",
-          display: "flex",
-          justifyContent: "space-around",
-          alignItems: "center",
-          paddingBottom: "10px",
-          zIndex: 100,
-        }}
-      >
-        <Link href="/" style={{ textDecoration: "none", color: "inherit" }}>
-          <NavItem icon="🏠" label="Home" />
-        </Link>
-        <Link
-          href="/recipe"
-          style={{ textDecoration: "none", color: "inherit" }}
-        >
-          <NavItem icon="🍳" label="Recipe" />
-        </Link>
-        <Link
-          href="/shared"
-          style={{ textDecoration: "none", color: "inherit" }}
-        >
-          <NavItem icon="🤝" label="Share" active />
-        </Link>
-        <Link href="/chat" style={{ textDecoration: "none", color: "inherit" }}>
-          <NavItem icon="💬" label="Chat" />
-        </Link>
-        <Link
-          href="/mypage"
-          style={{ textDecoration: "none", color: "inherit" }}
-        >
-          <NavItem icon="👤" label="My" />
-        </Link>
-      </nav>
-    </div>
-  );
-}
-
-// 🏠 내비게이션 아이템 함수형 컴포넌트 (파일 하단에 포함)
-function NavItem({
-  icon,
-  label,
-  active = false,
-}: {
-  icon: string;
-  label: string;
-  active?: boolean;
-}) {
-  return (
-    <div
-      style={{
-        textAlign: "center",
-        cursor: "pointer",
-        opacity: active ? 1 : 0.4,
-      }}
-    >
-      <div style={{ fontSize: "20px" }}>{icon}</div>
-      <div
-        style={{
-          fontSize: "10px",
-          fontWeight: active ? "800" : "500",
-          marginTop: "4px",
-        }}
-      >
-        {label}
-      </div>
     </div>
   );
 }
