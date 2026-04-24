@@ -117,7 +117,7 @@ export default function MySharedHistoryPage() {
       <div className="px-6 space-y-4">
         {loading ? (
           <div className="py-20 text-center">
-            <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
+            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
           </div>
         ) : items.length === 0 ? (
           <div className="py-20 text-center bg-white rounded-[32px] border-2 border-dashed border-gray-100">
@@ -132,7 +132,7 @@ export default function MySharedHistoryPage() {
               className="bg-white p-5 rounded-[28px] border border-gray-100 shadow-sm"
             >
               <div className="flex gap-4">
-                <div className="w-20 h-20 bg-orange-50 rounded-2xl flex-shrink-0 flex items-center justify-center text-2xl">
+                <div className="w-20 h-20 bg-blue-50 rounded-2xl flex-shrink-0 flex items-center justify-center text-2xl">
                   {item.category === "VEGETABLE" ? "🥦" : "🍎"}
                 </div>
                 <div className="flex-1 py-1">
@@ -146,7 +146,7 @@ export default function MySharedHistoryPage() {
                           setEditName(item.name);
                           setEditDescription(item.description || "");
                         }}
-                        className="text-gray-300 hover:text-orange-500 transition-colors"
+                        className="text-gray-300 hover:text-blue-500 transition-colors"
                       >
                         <svg
                           className="w-5 h-5"
@@ -195,7 +195,7 @@ export default function MySharedHistoryPage() {
                   onClick={() => toggleStatus(item.id, item.availabilityStatus)}
                   className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${
                     item.availabilityStatus === "available"
-                      ? "bg-orange-500 text-white shadow-lg shadow-orange-100"
+                      ? "bg-blue-500 text-white shadow-lg shadow-blue-100"
                       : "bg-gray-100 text-gray-400"
                   }`}
                 >
@@ -208,7 +208,7 @@ export default function MySharedHistoryPage() {
                 </button>
                 <Link
                   href={`/chat?itemId=${item.id}`}
-                  className="px-4 py-3 bg-gray-50 text-gray-400 rounded-xl text-xs font-bold hover:bg-orange-50 hover:text-orange-500 transition-all text-center flex items-center justify-center"
+                  className="px-4 py-3 bg-gray-50 text-gray-400 rounded-xl text-xs font-bold hover:bg-blue-50 hover:text-blue-500 transition-all text-center flex items-center justify-center"
                 >
                   View Chat
                 </Link>
@@ -238,7 +238,7 @@ export default function MySharedHistoryPage() {
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-orange-500 focus:outline-none font-bold transition-all"
+                  className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-blue-500 focus:outline-none font-bold transition-all"
                 />
               </div>
 
@@ -250,7 +250,7 @@ export default function MySharedHistoryPage() {
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
                   rows={3}
-                  className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-orange-500 focus:outline-none font-medium text-sm transition-all"
+                  className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-blue-500 focus:outline-none font-medium text-sm transition-all"
                 />
               </div>
 
@@ -263,7 +263,7 @@ export default function MySharedHistoryPage() {
                 </button>
                 <button
                   onClick={handleUpdateInfo}
-                  className="flex-[2] p-4 bg-orange-500 text-white font-bold rounded-2xl hover:bg-orange-600 shadow-lg shadow-orange-100 transition-all"
+                  className="flex-[2] p-4 bg-blue-500 text-white font-bold rounded-2xl hover:bg-blue-600 shadow-lg shadow-blue-100 transition-all"
                 >
                   수정 완료
                 </button>

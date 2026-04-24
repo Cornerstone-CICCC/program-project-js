@@ -595,7 +595,7 @@ export default function HomePage() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* 모달 헤더 - 고급스러운 그레이/오렌지 포인트 */}
-            <div className="bg-orange-50/70 px-6 py-5 border-b border-orange-100/60 flex justify-between items-center">
+            <div className="bg-blue-50/70 px-6 py-5 border-b border-blue-100/60 flex justify-between items-center">
               <h2 className="text-lg font-black text-gray-800 flex items-center gap-3">
                 <span className="text-3xl">{editingItem.emoji || "✏️"}</span>
                 Edit Ingredient Info
@@ -633,7 +633,7 @@ export default function HomePage() {
                   onChange={(e) =>
                     setEditingItem({ ...editingItem, name: e.target.value })
                   }
-                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-500 focus:bg-white outline-none transition-all font-semibold"
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all font-semibold"
                 />
               </div>
 
@@ -647,7 +647,7 @@ export default function HomePage() {
                   <div className="flex items-center justify-between gap-1.5 bg-gray-50 p-1 rounded-xl border border-gray-100 h-[52px]">
                     <button
                       onClick={() => adjustQuantity(-0.5)}
-                      className="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm text-orange-500 font-bold hover:bg-orange-500 hover:text-white transition-all"
+                      className="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm text-blue-500 font-bold hover:bg-blue-500 hover:text-white transition-all"
                     >
                       -
                     </button>
@@ -659,7 +659,7 @@ export default function HomePage() {
                     </div>
                     <button
                       onClick={() => adjustQuantity(0.5)}
-                      className="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm text-orange-500 font-bold hover:bg-orange-500 hover:text-white transition-all"
+                      className="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm text-blue-500 font-bold hover:bg-blue-500 hover:text-white transition-all"
                     >
                       +
                     </button>
@@ -686,7 +686,7 @@ export default function HomePage() {
                         expiryDate: new Date(e.target.value),
                       })
                     }
-                    className="w-full px-4 h-[52px] py-3.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-sm"
+                    className="w-full px-4 h-[52px] py-3.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                   />
                 </div>
               </div>
@@ -702,7 +702,7 @@ export default function HomePage() {
                   onChange={(e) =>
                     setEditingItem({ ...editingItem, memo: e.target.value })
                   }
-                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none h-20 resize-none text-sm leading-relaxed"
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none h-20 resize-none text-sm leading-relaxed"
                 />
               </div>
             </div>
@@ -718,7 +718,7 @@ export default function HomePage() {
                 </button>
                 <button
                   onClick={handleSaveEdit}
-                  className="flex-1 py-3.5 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition-all shadow-md shadow-orange-100"
+                  className="flex-1 py-3.5 bg-blue-500 text-white font-bold rounded-xl hover:bg-blue-600 transition-all shadow-md shadow-blue-100"
                 >
                   Save
                 </button>

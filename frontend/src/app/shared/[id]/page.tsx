@@ -334,13 +334,13 @@ export default function SharedItemDetailPage({
           <div
             style={{ fontSize: "13px", color: "#9ca3af", fontWeight: "600" }}
           >
-            ⭐ 5.0 · {item.owner?.location || "Local Resident"}
+            ⭐ {item.owner?.location || "Local Resident"}
           </div>
         </div>
         <div
           style={{
             fontSize: "13px",
-            color: "#f97316",
+            color: "rgb(37, 99, 235)",
             fontWeight: "800",
             cursor: "pointer",
           }}
@@ -393,7 +393,7 @@ export default function SharedItemDetailPage({
               width: "100%",
               padding: "20px",
               borderRadius: "20px",
-              backgroundColor: "#f97316",
+              backgroundColor: "rgb(37, 99, 235)",
               color: "white",
               border: "none",
               fontWeight: "900",

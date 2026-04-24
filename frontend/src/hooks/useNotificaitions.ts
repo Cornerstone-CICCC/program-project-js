@@ -5,11 +5,13 @@ import { useSession } from "next-auth/react";
 import { getPusherClient } from "../../lib/pusher";
 
 export const useNotifications = () => {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [unreadCount, setUnreadCount] = useState(0);
 
   // ✅ 1. 데이터 페칭 로직을 useCallback으로 분리 (재사용 가능)
   const fetchNotifications = useCallback(async () => {
+    if (status !== "authenticated") return;
+
     try {
       const res = await fetch(`/api/notifications?t=${Date.now()}`, {
         cache: "no-store",
@@ -19,7 +21,9 @@ export const useNotifications = () => {
         },
       });
 
-      if (res.ok) {
+      // ⬇️ [수정] 응답이 정상(ok)이고 Content-Type이 JSON인 경우에만 처리
+      const contentType = res.headers.get("content-type");
+      if (res.ok && contentType?.includes("application/json")) {
         const data = await res.json();
         // isRead가 false인 알림들만 필터링해서 카운트
         const unread = data.filter((n: any) => !n.isRead).length;
@@ -29,11 +33,11 @@ export const useNotifications = () => {
     } catch (error) {
       console.error("Failed to load notifications:", error);
     }
-  }, []);
+  }, [status]); // status를 의존성에 추가
 
   useEffect(() => {
     const userId = (session?.user as any)?.id;
-    if (!userId) return;
+    if (status !== "authenticated" || !userId) return;
 
     // 초기 로드
     fetchNotifications();
@@ -59,7 +63,7 @@ export const useNotifications = () => {
       channel.unbind("new-notification", handleNewNotification);
       pusher.unsubscribe(channelName);
     };
-  }, [session?.user?.id, fetchNotifications]);
+  }, [session?.user?.id, status, fetchNotifications]); // status 추가
 
   // ✅ fetchNotifications를 반환값에 포함시켜 페이지에서 직접 호출 가능하게 함
   return { unreadCount, setUnreadCount, fetchNotifications };

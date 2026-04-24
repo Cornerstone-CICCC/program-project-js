@@ -5,35 +5,40 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 export default function MyPage() {
   const { data: session, status } = useSession();
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newLocation, setNewLocation] = useState("");
 
-  // 저장 함수
-  const handleLocationUpdate = async () => {
-    if (!newLocation.trim()) {
-      toast.error("Please enter a location! 📍");
-      return;
-    }
+  const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
+  const [editData, setEditData] = useState({
+    firstName: userData?.firstName || "",
+    lastName: userData?.lastName || "",
+    currentPassword: "",
+    nextPassword: "",
+  });
 
-    const res = await fetch("/api/user/me", {
+  const handleSecurityUpdate = async () => {
+    // 로딩 상태를 보여주는 toast.promise를 쓰면 더 고급스러워요!
+    const updatePromise = fetch("/api/user/change-password", {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" }, // 중요: JSON임을 알림
-      body: JSON.stringify({ location: newLocation }),
+      body: JSON.stringify(editData),
     });
 
-    if (res.ok) {
-      const result = await res.json();
-      setUserData({ ...userData, location: result.location });
-      setIsModalOpen(false);
-    } else {
-      // 3. 서버 에러 발생 시
-      toast.error("Failed to save location. Please try again.");
-    }
+    toast.promise(updatePromise, {
+      loading: "Updating profile...",
+      success: (res) => {
+        if (!res.ok) throw new Error("Update failed");
+
+        setIsSecurityModalOpen(false);
+        // 데이터 갱신 (새로고침보다 효율적인 router.refresh 권장)
+        setTimeout(() => window.location.reload(), 1000);
+        return "Profile updated successfully! ✨";
+      },
+      error: "Check your current password and try again.",
+    });
   };
 
   useEffect(() => {
@@ -78,17 +83,21 @@ export default function MyPage() {
         <div className="flex items-center gap-5 mb-6">
           {/* 아바타 배경색 블루 틴트로 변경 */}
           <div className="w-20 h-20 bg-blue-50 rounded-[28px] flex items-center justify-center text-3xl shadow-inner border-2 border-blue-100 font-black text-blue-600">
-            {session?.user?.name ? session.user.name[0] : "👤"}
+            {/* ✅ 수정: session 대신 DB에서 가져온 userData 사용 */}
+            {userData?.firstName
+              ? userData.firstName[0]
+              : session?.user?.name
+                ? session.user.name[0]
+                : "👤"}
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <h2 className="text-2xl font-black text-slate-800 tracking-tight">
-                {session?.user?.name}
+                {/* ✅ 수정: DB에 저장된 성과 이름을 합쳐서 표시 */}
+                {userData
+                  ? `${userData.firstName} ${userData.lastName}`
+                  : session?.user?.name}
               </h2>
-              {/* 레벨 뱃지 블루로 변경 */}
-              <span className="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-lg font-bold">
-                LV.{userData?.level || 1}
-              </span>
             </div>
             <p className="text-slate-400 text-sm font-medium mt-1">
               {session?.user?.email}
@@ -118,79 +127,113 @@ export default function MyPage() {
       {/* 3. 메뉴 리스트 */}
       <div className="space-y-3">
         <h3 className="text-xs font-black text-slate-300 uppercase tracking-widest ml-2 mb-3">
-          Account Settings
+          Manage Account
         </h3>
-        <MenuButton
-          icon="📍"
-          title="Set My Location"
-          description={userData?.location || "Please set your location"}
-          onClick={() => {
-            setNewLocation(userData?.location || "");
-            setIsModalOpen(true);
-          }}
-        />
-        <MenuButton
-          icon="🔔"
-          title="Notification Settings"
-          description="Expiration date reminder alerts"
-        />
 
+        {/* 나눔 내역 */}
         <Link href="/mypage/shared">
-          <MenuButton icon="🛒" title="My Shared History" />
+          <MenuButton
+            icon="📦"
+            title="My Shared History"
+            description="View your shared items list"
+          />
         </Link>
 
+        {/* 비밀번호 변경 (추천: 전용 버튼) */}
+        <MenuButton
+          icon="🔐"
+          title="Security Setting"
+          description="Change your account password"
+          onClick={() => setIsSecurityModalOpen(true)}
+        />
+
+        {/* 로그아웃 */}
         <div className="pt-6">
           <button
             onClick={() => signOut()}
-            className="w-full flex items-center justify-center gap-2 p-4 bg-slate-50 text-slate-400 font-bold rounded-2xl hover:bg-blue-50 hover:text-blue-500 transition-all"
+            className="w-full flex items-center justify-center gap-2 p-4 bg-slate-100 text-slate-500 font-bold rounded-2xl hover:bg-blue-50 hover:text-blue-500 transition-all border border-transparent hover:border-red-100"
           >
             Logout
           </button>
         </div>
       </div>
 
-      {/* 위치 설정 모달 */}
-      {isModalOpen && (
+      {isSecurityModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setIsModalOpen(false)}
+            onClick={() => setIsSecurityModalOpen(false)}
           />
-
-          <div className="relative bg-white w-full max-w-[500px] rounded-[32px] p-8 shadow-2xl animate-in fade-in slide-in-from-bottom-10 duration-300">
-            <div className="flex flex-col gap-6">
-              <div className="space-y-2">
+          <div className="relative bg-white w-full max-w-[500px] rounded-[32px] p-8 shadow-2xl animate-in fade-in slide-in-from-bottom-10">
+            <div className="flex flex-col gap-5">
+              <div>
                 <h3 className="text-xl font-bold text-slate-800">
-                  Set My Location 📍
+                  Edit Profile & Security 🔐
                 </h3>
-                <p className="text-sm text-slate-400 font-medium">
-                  Enter your detailed address
-                  <br />
-                  so neighbors can find your items more easily!
+                <p className="text-sm text-slate-400 font-medium mt-1">
+                  Update your name or change password
                 </p>
               </div>
 
-              <input
-                type="text"
-                value={newLocation}
-                onChange={(e) => setNewLocation(e.target.value)}
-                placeholder="Detailed address"
-                className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-blue-600 focus:outline-none font-bold text-slate-700 transition-all"
-                autoFocus
-              />
+              <div className="space-y-3">
+                {/* 성함 수정 (2열) */}
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    placeholder="First Name"
+                    value={editData.firstName}
+                    className="p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-blue-600 outline-none font-bold"
+                    onChange={(e) =>
+                      setEditData({ ...editData, firstName: e.target.value })
+                    }
+                  />
+                  <input
+                    type="text"
+                    placeholder="Last Name"
+                    value={editData.lastName}
+                    className="p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-blue-600 outline-none font-bold"
+                    onChange={(e) =>
+                      setEditData({ ...editData, lastName: e.target.value })
+                    }
+                  />
+                </div>
+
+                <hr className="my-2 border-slate-100" />
+
+                {/* 비밀번호 수정 */}
+                <input
+                  type="password"
+                  placeholder="Current Password (To change password)"
+                  className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-blue-600 outline-none font-bold"
+                  onChange={(e) =>
+                    setEditData({
+                      ...editData,
+                      currentPassword: e.target.value,
+                    })
+                  }
+                />
+                <input
+                  type="password"
+                  placeholder="New Password"
+                  className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-blue-600 outline-none font-bold"
+                  onChange={(e) =>
+                    setEditData({ ...editData, nextPassword: e.target.value })
+                  }
+                />
+              </div>
 
               <div className="flex gap-3 mt-2">
                 <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 p-4 bg-slate-100 text-slate-500 font-bold rounded-2xl hover:bg-slate-200 transition-colors"
+                  onClick={() => setIsSecurityModalOpen(false)}
+                  className="flex-1 p-4 bg-slate-100 text-slate-500 font-bold rounded-2xl"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleLocationUpdate}
+                  onClick={handleSecurityUpdate}
                   className="flex-[2] p-4 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all"
                 >
-                  Save
+                  Save Changes
                 </button>
               </div>
             </div>
