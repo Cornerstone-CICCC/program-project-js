@@ -60,7 +60,7 @@ export default function Navigation() {
       </Link>
 
       <Link href="/mypage" className="no-underline color-inherit">
-        <NavItem icon="👤" label="My" active={pathname === "/mypage"} />
+        <NavItem icon="👤" label="My" active={pathname.startsWith("/mypage")} />
       </Link>
     </nav>
   );

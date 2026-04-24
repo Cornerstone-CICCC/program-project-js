@@ -7,6 +7,8 @@ import { useSession } from "next-auth/react";
 import { getPusherClient } from "../../../lib/pusher"; // Pusher 설정 불러오기
 import { useNotifications } from "@/src/hooks/useNotificaitions";
 import { cn } from "@/lib/utils";
+import { Trash2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function ChatListPage() {
   const router = useRouter();
@@ -72,6 +74,28 @@ export default function ChatListPage() {
   // 상대방 정보 추출 함수 (기능 유지)
   const getOtherUser = (chat: any) => {
     return chat.user1Id === session?.user?.id ? chat.user2 : chat.user1;
+  };
+
+  const handleDeleteChat = async (e: React.MouseEvent, chatId: string) => {
+    e.preventDefault(); // 링크 클릭 방지
+    e.stopPropagation(); // 버블링 방지
+
+    try {
+      const res = await fetch(`/api/chat/${chatId}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        // ✅ 성공 메시지 영문 번역
+        toast.success("Chat room deleted.");
+        setChatRooms((prev) => prev.filter((room) => room.id !== chatId));
+      } else {
+        throw new Error("Failed to delete");
+      }
+    } catch (error) {
+      // ✅ 실패 메시지 영문 번역
+      toast.error("Error deleting chat room.");
+    }
   };
 
   return (
@@ -223,32 +247,58 @@ export default function ChatListPage() {
                 </div>
 
                 {/* 채팅 정보 */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-center mb-1">
-                    <h3
-                      className={cn(
-                        "text-[17px] group-hover:text-blue-600 transition-colors",
-                        // ✅ [수정] 안 읽은 메시지 있으면 폰트 가중치 최대화
-                        hasUnread
-                          ? "font-[900] text-black"
-                          : "font-[800] text-[#1f2937]",
-                      )}
-                    >
-                      {otherUser?.firstName} {otherUser?.lastName || "Neighbor"}
-                    </h3>
-                    <span
-                      className={cn(
-                        "text-[11px] font-bold px-2 py-1 rounded-lg",
-                        // ✅ [수정] 안 읽은 메시지 있으면 날짜 태그 색상 강조
-                        hasUnread
-                          ? "bg-blue-500 text-white"
-                          : "bg-gray-50 text-gray-400",
-                      )}
-                    >
-                      {chat.messages?.[0] ? "Just now" : ""}
-                    </span>
-                  </div>
+                <div className="flex-1 min-w-0 relative">
+                  {" "}
+                  {/* relative 추가 */}
+                  <div className="flex justify-between items-start mb-1">
+                    {" "}
+                    {/* items-start로 변경 */}
+                    <div className="flex-1 min-w-0">
+                      <h3
+                        className={cn(
+                          "text-[17px] group-hover:text-blue-600 transition-colors truncate pr-2",
+                          hasUnread
+                            ? "font-[900] text-black"
+                            : "font-[800] text-[#1f2937]",
+                        )}
+                      >
+                        {otherUser?.firstName}{" "}
+                        {otherUser?.lastName || "Neighbor"}
+                      </h3>
+                    </div>
+                    {/* ✅ 삭제 버튼 추가 */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span
+                        className={cn(
+                          "text-[11px] font-bold px-2 py-1 rounded-lg",
+                          hasUnread
+                            ? "bg-blue-500 text-white"
+                            : "bg-gray-50 text-gray-400",
+                        )}
+                      >
+                        {chat.messages?.[0] ? "Just now" : ""}
+                      </span>
 
+                      <button
+                        onClick={(e) => handleDeleteChat(e, chat.id)}
+                        className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full" // 평소엔 숨겼다가 호버 시 노출
+                        title="Delete chat"
+                      >
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
                   {/* ✅ [수정] 안 읽은 메시지 있으면 텍스트 진하게 */}
                   <p
                     className={cn(
@@ -261,7 +311,6 @@ export default function ChatListPage() {
                     {chat.messages?.[0]?.content ||
                       "A new chat room has been created."}
                   </p>
-
                   {/* 아이템 태그 */}
                   {chat.sharedItem && (
                     <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-50 rounded-xl group-hover:bg-blue-50 transition-colors border border-gray-100/50 group-hover:border-blue-100">

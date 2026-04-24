@@ -191,7 +191,7 @@ export default function ChatRoomPage({
         <button
           onClick={() => {
             setUnreadCount(0); // 1. 숫자를 먼저 0으로 밀어버리고
-            router.back(); // 2. 뒤로 이동
+            router.push("/chat");
           }}
           className="p-2 mr-2"
         >

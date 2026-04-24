@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Package, CheckCircle2, Clock } from "lucide-react";
 import toast from "react-hot-toast";
+import moment from "moment";
 
 interface SharedItem {
   id: string;
@@ -174,7 +175,7 @@ export default function MySharedPage() {
                     </span>
                     <span className="text-[10px] text-gray-400 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      {new Date(item.createdAt).toLocaleDateString()}
+                      {moment(item.createdAt).format("MMM D, YYYY")}
                     </span>
                   </div>
                   <h3 className="font-bold text-gray-900 mt-1">{item.name}</h3>

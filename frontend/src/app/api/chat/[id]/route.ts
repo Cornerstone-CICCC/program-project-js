@@ -52,3 +52,45 @@ export async function GET(
     return new NextResponse("Internal server error occurred.", { status: 500 });
   }
 }
+
+// ✅ 2. 채팅방 삭제 (DELETE) 추가
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    const { id: chatId } = await params;
+
+    if (!session?.user?.id) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    // 채팅방 존재 여부 및 참여 권한 확인
+    const chatRoom = await prisma.chat.findUnique({
+      where: { id: chatId },
+    });
+
+    if (!chatRoom) {
+      return new NextResponse("Chat room not found.", { status: 404 });
+    }
+
+    // 참여자(user1 또는 user2)만 삭제 가능하도록 체크
+    if (
+      chatRoom.user1Id !== session.user.id &&
+      chatRoom.user2Id !== session.user.id
+    ) {
+      return new NextResponse("Access denied.", { status: 403 });
+    }
+
+    // DB에서 삭제 (상대방의 목록에서도 완전히 사라집니다)
+    await prisma.chat.delete({
+      where: { id: chatId },
+    });
+
+    return NextResponse.json({ message: "Chat room deleted successfully" });
+  } catch (error: any) {
+    console.error("Delete Chat Error:", error);
+    return new NextResponse("Internal server error occurred.", { status: 500 });
+  }
+}
