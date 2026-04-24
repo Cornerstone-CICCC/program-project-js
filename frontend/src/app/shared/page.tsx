@@ -166,42 +166,6 @@ export default function SharedBoardPage() {
         />
       </div>
 
-      {/* 필터 칩: 둥근 알약 스타일 */}
-      <div
-        style={{
-          display: "flex",
-          gap: "10px",
-          marginBottom: "32px",
-          overflowX: "auto",
-          paddingBottom: "5px",
-        }}
-      >
-        {["all", "free", "in-person"].map((f) => (
-          <button
-            key={f}
-            onClick={() => setActiveFilter(f)}
-            style={{
-              padding: "12px 20px",
-              borderRadius: "16px",
-              backgroundColor: activeFilter === f ? "#2563eb" : "white",
-              color: activeFilter === f ? "white" : "#2563eb",
-              border: "none",
-              boxShadow:
-                activeFilter === f
-                  ? "0 8px 16px rgba(249, 115, 22, 0.2)"
-                  : "0 2px 4px rgba(0,0,0,0.02)",
-              fontWeight: "800",
-              fontSize: "13px",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {f === "all" ? "All Posts" : f === "free" ? "Free" : "In-Person"}
-          </button>
-        ))}
-      </div>
-
       {/* 나눔 그리드: 카드 기반 디자인 */}
       {loading ? (
         <div style={{ textAlign: "center", padding: "80px 0" }}>
@@ -330,25 +294,6 @@ export default function SharedBoardPage() {
                     >
                       <span style={{ fontSize: "14px" }}>📍</span>{" "}
                       {distanceAway}
-                    </div>
-
-                    {/* 상태 라벨 */}
-                    <div
-                      style={{
-                        display: "inline-block",
-                        fontSize: "10px",
-                        fontWeight: "900",
-                        padding: "5px 12px",
-                        borderRadius: "10px",
-                        backgroundColor:
-                          item.status === "free" ? "#ecfdf5" : "#eff6ff",
-                        color: item.status === "free" ? "#059669" : "#2563eb",
-                        textTransform: "uppercase",
-                        marginBottom: "16px",
-                        letterSpacing: "0.05em",
-                      }}
-                    >
-                      {item.status}
                     </div>
 
                     {/* 작성자 정보 영역 */}

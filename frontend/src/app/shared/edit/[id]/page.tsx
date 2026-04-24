@@ -210,56 +210,6 @@ export default function EditSharedItemPage({
           />
         </div>
 
-        {/* ✅ 나눔 방식 선택 (무료나눔 / 직거래) */}
-        <div style={{ marginBottom: "24px" }}>
-          <label
-            style={{
-              display: "block",
-              fontSize: "14px",
-              fontWeight: "800",
-              marginBottom: "12px",
-              color: "#4b5563",
-              marginLeft: "4px",
-            }}
-          >
-            Sharing Method
-          </label>
-          <div style={{ display: "flex", gap: "12px" }}>
-            {[
-              { id: "free", label: "Free Share", emoji: "🎁" },
-              { id: "in-person", label: "In-person", emoji: "🤝" },
-            ].map((type) => (
-              <button
-                key={type.id}
-                type="button"
-                onClick={() => setFormData({ ...formData, status: type.id })}
-                style={{
-                  flex: 1,
-                  padding: "16px",
-                  borderRadius: "20px",
-                  border: "2px solid",
-                  borderColor:
-                    formData.status === type.id ? "#f97316" : "#f3f4f6",
-                  backgroundColor:
-                    formData.status === type.id ? "#fff7ed" : "white",
-                  color: formData.status === type.id ? "#f97316" : "#9ca3af",
-                  fontWeight: "800",
-                  fontSize: "15px",
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                }}
-              >
-                <span>{type.emoji}</span>
-                {type.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* 아이템 이름 */}
         <div style={{ marginBottom: "24px" }}>
           <label

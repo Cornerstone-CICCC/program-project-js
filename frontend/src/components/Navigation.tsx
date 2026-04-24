@@ -34,7 +34,7 @@ export default function Navigation() {
         isHidden ? "hidden" : "flex",
       )}
     >
-      <Link href="/" className="no-underline color-inherit">
+      <Link href="/" className="no-underline color-inherit ">
         <NavItem icon="🏠" label="Home" active={pathname === "/"} />
       </Link>
 
@@ -81,7 +81,7 @@ function NavItem({
   return (
     <div
       className={cn(
-        "text-center cursor-pointer transition-all flex flex-col items-center",
+        "text-center cursor-pointer transition-all flex flex-col items-center ",
         active ? "opacity-100 scale-105" : "opacity-40",
       )}
     >
@@ -97,7 +97,9 @@ function NavItem({
       <div
         className={cn(
           "text-[10px] mt-1 tracking-tight",
-          active ? "font-[800]" : "font-[500]",
+          active
+            ? "text-[13px] font-[900] text-black-600"
+            : "text-[12px] font-bold text-gray-400",
         )}
       >
         {label}

@@ -1,277 +1,225 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link"; // <--- 이 줄을 추가하세요!
+import { ChevronLeft, Package, CheckCircle2, Clock } from "lucide-react";
+import toast from "react-hot-toast";
 
-export default function MySharedHistoryPage() {
+interface SharedItem {
+  id: string;
+  name: string;
+  category: string;
+  imageUrl: string | null;
+  availabilityStatus: string; // "available" | "completed"
+  createdAt: string;
+}
+
+export default function MySharedPage() {
   const router = useRouter();
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<SharedItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingItem, setEditingItem] = useState<any>(null); // 현재 수정 중인 아이템 객체
-  const [editName, setEditName] = useState("");
-  const [editDescription, setEditDescription] = useState("");
+  const [activeTab, setActiveTab] = useState<"all" | "available" | "completed">(
+    "all",
+  );
 
-  // 수정 저장 함수
-  const handleUpdateInfo = async () => {
-    if (!editName.trim()) return alert("Please enter a name.");
-
-    const res = await fetch(`/api/user/shared/${editingItem.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: editName, description: editDescription }),
-    });
-
-    if (res.ok) {
-      setItems(
-        items.map((item) =>
-          item.id === editingItem.id
-            ? { ...item, name: editName, description: editDescription }
-            : item,
-        ),
-      );
-      setEditingItem(null); // 모달 닫기
+  // 1. 데이터 가져오기
+  const fetchSharedItems = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/user/shared"); // 내 나눔 아이템을 가져오는 API (별도 생성 필요)
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      setItems(data);
+    } catch (error) {
+      console.error(error);
+      toast.error("Could not load sharing records.");
+    } finally {
+      setLoading(false);
     }
-  };
-
-  // 1. 상태 변경 함수
-  const toggleStatus = async (id: string, currentStatus: string) => {
-    const nextStatus =
-      currentStatus === "available" ? "completed" : "available";
-    const res = await fetch(`/api/user/shared/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ availabilityStatus: nextStatus }),
-    });
-
-    if (res.ok) {
-      setItems(
-        items.map((item) =>
-          item.id === id ? { ...item, availabilityStatus: nextStatus } : item,
-        ),
-      );
-    }
-  };
-
-  // 2. 삭제 함수
-  const deleteItem = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this post?")) return;
-
-    const res = await fetch(`/api/user/shared/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      setItems(items.filter((item) => item.id !== id));
-    }
-  };
-
-  useEffect(() => {
-    const fetchMyItems = async () => {
-      try {
-        const res = await fetch(`/api/user/shared`); // 쿼리 파라미터 삭제
-        if (res.ok) {
-          const data = await res.json();
-          setItems(data);
-        }
-      } catch (error) {
-        console.error("Failed data load:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMyItems();
   }, []);
 
+  useEffect(() => {
+    fetchSharedItems();
+  }, [fetchSharedItems]);
+
+  // 2. 나눔 상태 변경 함수 (나눔 완료하기)
+  const handleComplete = async (id: string) => {
+    try {
+      const res = await fetch(`/api/shared/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ availabilityStatus: "completed" }),
+      });
+
+      if (res.ok) {
+        toast.success("Sharing completed! 🎁");
+        fetchSharedItems(); // 목록 새로고침
+      }
+    } catch (error) {
+      toast.error("Failed to update status.");
+    }
+  };
+
+  const filteredItems = items
+    .filter((item) =>
+      activeTab === "all" ? true : item.availabilityStatus === activeTab,
+    )
+    .sort((a, b) => {
+      // availabilityStatus가 "available"인 것을 우선순위로 둠
+      if (
+        a.availabilityStatus === "available" &&
+        b.availabilityStatus === "completed"
+      )
+        return -1;
+      if (
+        a.availabilityStatus === "completed" &&
+        b.availabilityStatus === "available"
+      )
+        return 1;
+
+      // 같은 상태 내에서는 최신순으로 정렬
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+  const completedCount = items.filter(
+    (i) => i.availabilityStatus === "completed",
+  ).length;
+
   return (
-    <div
-      className="min-h-screen bg-[#fcfcfc] pb-24"
-      style={{ maxWidth: "600px", margin: "0 auto" }}
-    >
-      {/* 상단 헤더 */}
-      <div className="flex items-center p-6 bg-white sticky top-0 z-10">
+    <div className="max-w-2xl mx-auto min-h-screen bg-white p-4 pb-24">
+      {/* 상단 헤더 & 뒤로가기 */}
+      <div className="flex items-center gap-4 mb-6 pt-2">
         <button
-          onClick={() => router.back()}
-          className="p-2 hover:bg-gray-50 rounded-full transition-all"
+          onClick={() => router.back()} // ✅ 뒤로가기 기능
+          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
         >
-          <svg
-            className="w-6 h-6 text-gray-600"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            viewBox="0 0 24 24"
-          >
-            <path d="M15 19l-7-7 7-7" />
-          </svg>
+          <ChevronLeft className="w-6 h-6 text-gray-700" />
         </button>
-        <h1 className="ml-2 text-xl font-black text-gray-800 tracking-tight">
-          My Shared Items
-        </h1>
+        <h1 className="text-xl font-bold text-gray-900">My Sharing Overview</h1>
       </div>
 
-      {/* 안내 문구 */}
-      <div className="px-6 mb-6">
-        <p className="text-sm text-gray-400 font-medium">
-          These are the ingredients you’ve shared with your neighbors.
-        </p>
+      {/* 누적 통계 카드 */}
+      <div className="bg-blue-50 rounded-[24px] p-6 mb-8 border border-blue-100 flex justify-between items-center shadow-sm">
+        <div>
+          <p className="text-blue-600 text-xs font-bold uppercase tracking-wider mb-1">
+            Successful Shares
+          </p>
+          <p className="text-3xl font-black text-blue-900">{completedCount}</p>
+        </div>
+        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm text-2xl">
+          🎁
+        </div>
+      </div>
+
+      {/* 상태 필터 탭 */}
+      <div className="flex p-1 bg-gray-100 rounded-2xl mb-6">
+        {[
+          { id: "all", label: "All" },
+          { id: "available", label: "Sharing" },
+          { id: "completed", label: "Completed" },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
+              activeTab === tab.id
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500 hover:text-gray-600"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* 아이템 리스트 */}
-      <div className="px-6 space-y-4">
+      <div className="space-y-4">
         {loading ? (
-          <div className="py-20 text-center">
-            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          </div>
-        ) : items.length === 0 ? (
-          <div className="py-20 text-center bg-white rounded-[32px] border-2 border-dashed border-gray-100">
-            <span className="text-4xl block mb-4">🌱</span>
-            <p className="text-gray-400 font-bold">No shared items yet.</p>
-          </div>
-        ) : (
-          // 💡 여기서 {items.map ... } 이 아니라 (items.map ... ) 으로 시작해야 합니다.
-          items.map((item) => (
+          <div className="text-center py-10 text-gray-400">Loading...</div>
+        ) : filteredItems.length > 0 ? (
+          filteredItems.map((item) => (
             <div
               key={item.id}
-              className="bg-white p-5 rounded-[28px] border border-gray-100 shadow-sm"
+              className="bg-white border border-gray-100 rounded-[24px] p-4 shadow-[0_4px_12px_rgba(0,0,0,0.03)] flex gap-4"
             >
-              <div className="flex gap-4">
-                <div className="w-20 h-20 bg-blue-50 rounded-2xl flex-shrink-0 flex items-center justify-center text-2xl">
-                  {item.category === "VEGETABLE" ? "🥦" : "🍎"}
-                </div>
-                <div className="flex-1 py-1">
-                  <div className="flex justify-between items-start">
-                    <h4 className="font-bold text-gray-800">{item.name}</h4>
-                    <div className="flex gap-2">
-                      {/* 수정 버튼 추가 */}
-                      <button
-                        onClick={() => {
-                          setEditingItem(item);
-                          setEditName(item.name);
-                          setEditDescription(item.description || "");
-                        }}
-                        className="text-gray-300 hover:text-blue-500 transition-colors"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => deleteItem(item.id)}
-                        className="text-gray-300 hover:text-red-500 transition-colors"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                      </button>
-                    </div>
+              {/* 이미지 영역 */}
+              <div className="w-20 h-20 bg-gray-50 rounded-2xl overflow-hidden flex-shrink-0 border border-gray-50">
+                {item.imageUrl ? (
+                  <img
+                    src={item.imageUrl}
+                    alt={item.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-300">
+                    <Package className="w-8 h-8" />
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {new Date(item.createdAt).toLocaleDateString()} Registered
-                    on
-                  </p>
-                </div>
+                )}
               </div>
 
-              {/* 하단 관리 액션바 */}
-              <div className="flex gap-2 mt-4 pt-4 border-t border-gray-50">
-                <button
-                  onClick={() => toggleStatus(item.id, item.availabilityStatus)}
-                  className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${
-                    item.availabilityStatus === "available"
-                      ? "bg-blue-500 text-white shadow-lg shadow-blue-100"
-                      : "bg-gray-100 text-gray-400"
-                  }`}
-                >
-                  {item.availabilityStatus === "available"
-                    ? "Mark as Shared"
-                    : "Share Again"}
-                </button>
-                <button className="px-4 py-3 bg-gray-50 text-gray-400 rounded-xl text-xs font-bold hover:bg-gray-100 transition-all">
-                  View Chat
-                </button>
-                <Link
-                  href={`/chat?itemId=${item.id}`}
-                  className="px-4 py-3 bg-gray-50 text-gray-400 rounded-xl text-xs font-bold hover:bg-blue-50 hover:text-blue-500 transition-all text-center flex items-center justify-center"
-                >
-                  View Chat
-                </Link>
+              {/* 정보 영역 */}
+              <div className="flex-1 flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start">
+                    <span
+                      className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase ${
+                        item.availabilityStatus === "available"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      {item.availabilityStatus === "available"
+                        ? "Sharing"
+                        : "Completed"}
+                    </span>
+                    <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {new Date(item.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-gray-900 mt-1">{item.name}</h3>
+                  <p className="text-xs text-gray-500">{item.category}</p>
+                </div>
+
+                {/* 버튼 영역 */}
+                <div className="flex gap-2 mt-3">
+                  {item.availabilityStatus === "available" ? (
+                    <>
+                      {/* 1. 나눔 중일 때만 보이는 버튼들 */}
+                      <button
+                        onClick={() => router.push(`/shared/edit/${item.id}`)}
+                        className="flex-1 py-2 text-xs font-bold border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleComplete(item.id)}
+                        className="flex-[2] py-2 text-xs font-bold bg-blue-500 text-white rounded-xl hover:bg-blue-600 shadow-sm transition-all flex items-center justify-center gap-1"
+                      >
+                        <CheckCircle2 className="w-3 h-3" />
+                        Completed
+                      </button>
+                    </>
+                  ) : (
+                    /* 2. 나눔 완료 상태일 때 보이는 표시 */
+                    <div className="flex-1 flex items-center justify-center py-2 bg-gray-50 border border-gray-100 rounded-xl">
+                      <span className="text-xs font-bold text-gray-400 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-gray-300" />
+                        Completed
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ))
+        ) : (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <Package className="w-12 h-12 text-gray-200 mb-4" />
+            <p className="text-gray-400 font-medium">No items found.</p>
+          </div>
         )}
       </div>
-
-      {editingItem && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setEditingItem(null)}
-          />
-          <div className="relative bg-white w-full max-w-[400px] rounded-[32px] p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
-            <h3 className="text-xl font-bold text-gray-800 mb-6">
-              정보 수정하기 ✏️
-            </h3>
-
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-black text-gray-400 ml-1 mb-2 block uppercase">
-                  아이템 이름
-                </label>
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-blue-500 focus:outline-none font-bold transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-black text-gray-400 ml-1 mb-2 block uppercase">
-                  상세 설명
-                </label>
-                <textarea
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  rows={3}
-                  className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-blue-500 focus:outline-none font-medium text-sm transition-all"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={() => setEditingItem(null)}
-                  className="flex-1 p-4 bg-gray-100 text-gray-500 font-bold rounded-2xl hover:bg-gray-200 transition-all"
-                >
-                  취소
-                </button>
-                <button
-                  onClick={handleUpdateInfo}
-                  className="flex-[2] p-4 bg-blue-500 text-white font-bold rounded-2xl hover:bg-blue-600 shadow-lg shadow-blue-100 transition-all"
-                >
-                  수정 완료
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

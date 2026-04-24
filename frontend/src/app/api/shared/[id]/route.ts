@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 // 1. 상세 조회 (GET)
 export async function GET(
@@ -55,7 +57,10 @@ export async function PATCH(
         description: body.description,
         status: body.status,
         expiryDate: body.expiryDate ? new Date(body.expiryDate) : undefined,
-        // 추가로 수정할 필드가 있다면 여기에 작성
+
+        ...(body.availabilityStatus && {
+          availabilityStatus: body.availabilityStatus,
+        }),
       },
     });
 

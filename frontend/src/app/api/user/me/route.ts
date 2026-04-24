@@ -10,7 +10,6 @@ export async function GET() {
 
     // 1. 세션 체크
     if (!session?.user?.email) {
-      console.error("❌ [API ME] No session found");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -35,13 +34,14 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // 3. 나눔 카운트 조회 (try-catch로 감싸서 하나가 실패해도 전체가 죽지 않게 함)
+    // 3. 나눔 카운트 조회
     let sharedCount = 0;
     try {
       sharedCount = await prisma.sharedItem.count({
         where: {
-          userId: user.id, // 👈 ownerId 대신 userId 사용 (에러 메시지에 id, userId가 보입니다)
-          status: "completed",
+          userId: user.id,
+          // ✅ 수정: status 대신 availabilityStatus 필드를 사용하고, 값은 "completed"로 체크
+          availabilityStatus: "completed",
         },
       });
     } catch (dbError) {
@@ -56,7 +56,6 @@ export async function GET() {
       sharedCount: sharedCount,
     });
   } catch (error: any) {
-    // 📍 여기서 찍히는 에러 메시지가 핵심입니다! VS Code 터미널을 확인하세요.
     console.error("🔥 [API ME] CRITICAL ERROR:", error.message);
     return NextResponse.json(
       { error: "Internal Server Error", details: error.message },

@@ -7,6 +7,10 @@ import prisma from "@/lib/prisma";
 export async function GET() {
   try {
     const items = await prisma.sharedItem.findMany({
+      // ✅ 추가: 나눔 가능 상태(available)인 아이템만 조회
+      where: {
+        availabilityStatus: "available",
+      },
       include: {
         owner: true,
       },
@@ -15,7 +19,7 @@ export async function GET() {
       },
     });
 
-    // 작성자(owner) 정보가 정상적으로 연결된 데이터만 필터링
+    // 작성자(owner) 정보가 정상적으로 연결된 데이터만 필터링 (기존 기능 유지)
     const validItems = items.filter((item) => item.owner !== null);
 
     return NextResponse.json(validItems);

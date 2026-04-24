@@ -473,33 +473,8 @@ export default function HomePage() {
                 href={`/shared/${item.id}`}
                 style={{ textDecoration: "none", color: "inherit" }}
               >
-                <div
-                  style={{
-                    backgroundColor: "white",
-                    padding: "20px 15px", // 상하 패딩을 조금 더 주어 여유 있게 조절
-                    borderRadius: "24px",
-                    border: "1px solid #f3f4f6",
-                    textAlign: "center",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
-                    display: "flex", // 카드 내부 요소 수직 정렬을 위해 추가
-                    flexDirection: "column",
-                    alignItems: "center",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "60px",
-                      height: "60px",
-                      marginBottom: "12px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      overflow: "hidden", // 이미지가 삐져나오지 않게 처리
-                      borderRadius: "16px", // 이미지 박스 자체의 곡률
-                      backgroundColor: "#f9fafb", // 이미지 로딩 전이나 없을 때 대비한 배경색
-                      margin: "0 auto", // ✅ 부모 컨테이너 내에서 가로 중앙 정렬
-                    }}
-                  >
+                <div className="bg-white px-[15px] py-[20px] rounded-[24px] border border-[#f3f4f6] text-center shadow-[0_4px_12px_rgba(0,0,0,0.03)] flex flex-col items-center">
+                  <div className="w-[60px] h-[60px] mb-[15px] flex items-center justify-center overflow-hidden rounded-[16px] bg-gray-50 mx-auto">
                     {item.imageUrl ? (
                       <img
                         src={item.imageUrl}
@@ -540,21 +515,6 @@ export default function HomePage() {
                       {item.quantity}
                       {item.unit}
                     </span>
-                  </div>
-                  <div
-                    style={{
-                      display: "inline-block",
-                      backgroundColor:
-                        item.status === "free" ? "#dcfce7" : "#dbeafe",
-                      color: item.status === "free" ? "#059669" : "#2563eb",
-                      fontSize: "10px",
-                      fontWeight: "800",
-                      padding: "2px 8px",
-                      borderRadius: "8px",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {item.status}
                   </div>
                 </div>
               </Link>
